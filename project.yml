@@ -1,0 +1,45 @@
+name: Jippo
+options:
+  bundleIdPrefix: com.wallylin
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: 5.0
+    PRODUCT_NAME: Jippo
+    PRODUCT_BUNDLE_IDENTIFIER: com.wallylin.Jippo
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
+    GENERATE_INFOPLIST_FILE: YES
+    INFOPLIST_KEY_CFBundleDisplayName: Jippo
+    INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.news
+    INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+    INFOPLIST_KEY_UILaunchScreen_Generation: YES
+    INFOPLIST_KEY_NSHumanReadableCopyright: ""
+targets:
+  Jippo:
+    type: application
+    platform: auto
+    supportedDestinations:
+      - iOS
+      - macOS
+      - visionOS
+    deploymentTarget:
+      iOS: "18.0"
+      macOS: "15.0"
+      visionOS: "2.0"
+    sources:
+      - path: Jippo/Sources
+      - path: Jippo/Resources
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wallylin.Jippo
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+schemes:
+  Jippo:
+    build:
+      targets:
+        Jippo: all
+    run:
+      config: Debug
