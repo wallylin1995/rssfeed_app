@@ -15,7 +15,7 @@ struct HomeView: View {
         Group {
             if let plan = plans.first {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 40) {
+                    VStack(alignment: .leading, spacing: 44) {
                         HomeHeaderView(
                             title: plan.title,
                             subtitle: plan.subtitle,
@@ -23,28 +23,38 @@ struct HomeView: View {
                             categoryGroups: categoryGroups
                         )
 
-                        ForEach(plan.sections.sorted(using: [SortDescriptor(\HomepageSectionRecord.displayOrder)])) { section in
+                        if let heroSection = section(for: .hero, in: plan) {
                             VStack(alignment: .leading, spacing: 18) {
-                                SectionHeaderView(title: section.title, subtitle: section.subtitle)
+                                SectionHeaderView(
+                                    title: heroSection.title,
+                                    subtitle: heroSection.subtitle
+                                )
+                                HeroSectionView(
+                                    placements: orderedPlacements(for: heroSection),
+                                    selectedArticleID: $selectedArticleID
+                                )
+                            }
+                        }
 
-                                switch section.style {
-                                case .hero:
-                                    HeroSectionView(placements: orderedPlacements(for: section), selectedArticleID: $selectedArticleID)
-                                case .grid:
-                                    StoryGridSectionView(placements: orderedPlacements(for: section), selectedArticleID: $selectedArticleID)
-                                case .rail:
-                                    TopicRailSectionView(placements: orderedPlacements(for: section), selectedArticleID: $selectedArticleID)
-                                }
+                        if let topStoriesSection = section(for: .topStories, in: plan) {
+                            VStack(alignment: .leading, spacing: 18) {
+                                SectionHeaderView(
+                                    title: topStoriesSection.title,
+                                    subtitle: topStoriesSection.subtitle
+                                )
+                                StoryGridSectionView(
+                                    placements: orderedPlacements(for: topStoriesSection),
+                                    selectedArticleID: $selectedArticleID
+                                )
                             }
                         }
 
                         if !categoryGroups.isEmpty {
                             VStack(alignment: .leading, spacing: 20) {
                                 SectionHeaderView(
-                                    title: "Category Briefings",
-                                    subtitle: "A wider front page grouped from your live feed universe."
+                                    title: "By Category",
+                                    subtitle: "A calmer second pass through the rest of your feed, grouped into clearer desks."
                                 )
-
                                 TodayCategorySectionsView(
                                     groups: categoryGroups,
                                     selectedArticleID: $selectedArticleID
@@ -54,8 +64,7 @@ struct HomeView: View {
                     }
                     .padding(.horizontal, 34)
                     .padding(.vertical, 30)
-                    .frame(maxWidth: 1720)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else {
                 ContentUnavailableView(
@@ -72,6 +81,10 @@ struct HomeView: View {
         .background(JippoPalette.canvas.ignoresSafeArea())
         .navigationTitle("Jippo")
         .jippoTitleDisplayMode(.large)
+    }
+
+    private func section(for semanticType: HomepageSemanticType, in plan: HomepagePlanRecord) -> HomepageSectionRecord? {
+        plan.sections.first(where: { $0.semanticType == semanticType.rawValue })
     }
 
     private func orderedPlacements(for section: HomepageSectionRecord) -> [HomepagePlacementRecord] {
@@ -100,20 +113,33 @@ struct HomeView: View {
     }
 
     private var categoryGroups: [TodayCategoryGroup] {
-        let grouped = Dictionary(grouping: recentArticles.prefix(48)) { article in
+        let plannedIDs = Set(
+            plans.first?
+                .sections
+                .flatMap(\.placements)
+                .compactMap(\.article?.uuid) ?? []
+        )
+
+        let remainingArticles = recentArticles
+            .filter { !plannedIDs.contains($0.uuid) }
+            .prefix(24)
+
+        let grouped = Dictionary(grouping: remainingArticles) { article in
             article.feed?.category ?? .world
         }
 
         return FeedCategory.allCases.compactMap { category in
             guard let articles = grouped[category] else { return nil }
-            let unique = Array(articles.prefix(4))
-            guard !unique.isEmpty else { return nil }
+            let unique = Array(articles.prefix(3))
+            guard unique.count >= 2 else { return nil }
 
             return TodayCategoryGroup(
                 category: category,
                 articles: unique
             )
         }
+        .prefix(3)
+        .map { $0 }
     }
 }
 
@@ -131,25 +157,20 @@ struct HomeHeaderView: View {
     let categoryGroups: [TodayCategoryGroup]
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: 24) {
-                VStack(alignment: .leading, spacing: 18) {
-                    mastheadCopy
+        VStack(alignment: .leading, spacing: 22) {
+            mastheadCopy
+
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 18) {
                     TodayBriefStrip(digest: digest, categoryGroups: categoryGroups)
+                    TodaySignalRow(digest: digest)
+                        .frame(width: 420)
                 }
 
-                VStack(spacing: 18) {
-                    TodaySignalCard(digest: digest)
-                    TodayMomentumCard(digest: digest, categoryGroups: categoryGroups)
+                VStack(alignment: .leading, spacing: 18) {
+                    TodayBriefStrip(digest: digest, categoryGroups: categoryGroups)
+                    TodaySignalRow(digest: digest)
                 }
-                .frame(width: 390)
-            }
-
-            VStack(alignment: .leading, spacing: 20) {
-                mastheadCopy
-                TodayBriefStrip(digest: digest, categoryGroups: categoryGroups)
-                TodaySignalCard(digest: digest)
-                TodayMomentumCard(digest: digest, categoryGroups: categoryGroups)
             }
         }
     }
@@ -172,19 +193,6 @@ struct HomeHeaderView: View {
             Label("Real feed sync + local persistence + editorial layout planning", systemImage: "wand.and.stars")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(JippoPalette.highlight)
-
-            HStack(spacing: 10) {
-                Text("Updated \(digest.generatedAt.formatted(date: .abbreviated, time: .shortened))")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
-
-                Text("•")
-                    .foregroundStyle(.tertiary)
-
-                Text("\(digest.storyCount) stories in play")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -206,7 +214,7 @@ private struct TodayBriefStrip: View {
             }
 
             Text(briefCopy)
-                .font(.system(size: 24, weight: .medium, design: .serif))
+                .font(.system(size: 28, weight: .medium, design: .serif))
                 .foregroundStyle(.white.opacity(0.92))
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -228,7 +236,7 @@ private struct TodayBriefStrip: View {
                 }
             }
         }
-        .padding(22)
+        .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             LinearGradient(
@@ -240,11 +248,7 @@ private struct TodayBriefStrip: View {
                 endPoint: .bottomTrailing
             )
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .stroke(.white.opacity(0.06), lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+        .cardChrome(radius: 30)
     }
 
     private var briefCopy: String {
@@ -253,127 +257,47 @@ private struct TodayBriefStrip: View {
             return "\(labels[0])、\(labels[1]) 與 \(labels[2]) 正在主導今天的版面節奏。"
         }
         if let first = labels.first {
-            return "\(first) 類別仍然最活躍，首頁已整理成可快速掃讀的 front page。"
+            return "\(first) 類別仍然最活躍，首頁已整理成更清楚的編排節奏。"
         }
-        return "Your front page is now arranged as a richer newsroom-style edition."
+        return "Your front page is now arranged as a calmer newsroom-style edition."
     }
 }
 
-private struct TodaySignalCard: View {
+private struct TodaySignalRow: View {
     let digest: HomepageDigest
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Text("Newsroom Pulse")
-                    .font(.headline.weight(.bold))
-
-                Spacer()
-
-                Image(systemName: "waveform.path.ecg")
-                    .foregroundStyle(JippoPalette.highlight)
-            }
-
-            HStack(spacing: 12) {
-                statCard(value: "\(digest.storyCount)", label: "stories")
-                statCard(value: "\(digest.feedCount)", label: "feeds")
-            }
-
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Top tracks")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
-
-                FlowLayout(spacing: 10) {
-                    ForEach(digest.topicLabels, id: \.self) { topic in
-                        Text(topic)
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(JippoPalette.panelSoft)
-                            .clipShape(Capsule())
-                    }
-                }
-            }
-
-            Text("Updated \(digest.generatedAt.formatted(date: .abbreviated, time: .shortened))")
-                .font(.footnote)
-                .foregroundStyle(.tertiary)
+        HStack(spacing: 14) {
+            metricCard(title: "Stories", value: "\(digest.storyCount)", note: "fresh articles")
+            metricCard(title: "Feeds", value: "\(digest.feedCount)", note: "active sources")
+            metricCard(
+                title: "Updated",
+                value: digest.generatedAt.formatted(date: .omitted, time: .shortened),
+                note: digest.generatedAt.formatted(date: .abbreviated, time: .omitted)
+            )
         }
-        .padding(20)
-        .background(JippoPalette.panel.opacity(0.9))
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(.white.opacity(0.06), lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
     }
 
-    private func statCard(value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(value)
-                .font(.system(size: 30, weight: .bold, design: .rounded))
-            Text(label.uppercased())
+    private func metricCard(title: String, value: String, note: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased())
                 .font(.caption2.weight(.black))
-                .kerning(1.4)
+                .kerning(1.2)
+                .foregroundStyle(.secondary)
+
+            Text(value)
+                .font(title == "Updated" ? .title3.weight(.bold) : .system(size: 34, weight: .bold, design: .rounded))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+
+            Text(note)
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(JippoPalette.panelSoft.opacity(0.85))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-}
-
-private struct TodayMomentumCard: View {
-    let digest: HomepageDigest
-    let categoryGroups: [TodayCategoryGroup]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Priority Lanes")
-                .font(.headline.weight(.bold))
-
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(Array(categoryGroups.prefix(3).enumerated()), id: \.offset) { index, group in
-                    HStack(spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(group.category.color.opacity(0.18))
-                            Text("\(index + 1)")
-                                .font(.caption.weight(.black))
-                                .foregroundStyle(group.category.color)
-                        }
-                        .frame(width: 28, height: 28)
-
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(group.category.title)
-                                .font(.subheadline.weight(.bold))
-                            Text(group.articles.first?.title ?? "")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(2)
-                        }
-
-                        Spacer()
-                    }
-                }
-            }
-
-            Divider()
-                .overlay(.white.opacity(0.06))
-
-            Text("Edition compiled from \(digest.feedCount) live sources and tuned for fast scanning across a wide desktop window.")
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
-        }
-        .padding(20)
-        .background(JippoPalette.panel.opacity(0.9))
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(.white.opacity(0.06), lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .padding(18)
+        .background(JippoPalette.panelSoft.opacity(0.7))
+        .cardChrome(radius: 24)
     }
 }
 

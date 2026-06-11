@@ -57,8 +57,8 @@ struct StoryDetailView: View {
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
 
-                    if let summary = article.content?.summary, !summary.isEmpty {
-                        Text(summary)
+                    if !article.displaySummary.isEmpty, article.displaySummary != "No summary yet." {
+                        Text(article.displaySummary)
                             .font(.title3)
                             .foregroundStyle(.secondary)
                     }
@@ -82,8 +82,8 @@ struct StoryDetailView: View {
                     Divider()
                         .overlay(.white.opacity(0.1))
 
-                    if let text = article.content?.text, !text.isEmpty {
-                        Text(text)
+                    if !article.displayBodyText.isEmpty {
+                        Text(article.displayBodyText)
                             .font(.body)
                             .textSelection(.enabled)
                     } else {

@@ -103,8 +103,6 @@ struct ReaderShellView: View {
 
     private var sidebarRoot: some View {
         sidebarList
-            .scrollContentBackground(.hidden)
-            .background(JippoPalette.canvas)
             .navigationTitle("Jippo")
             .frame(maxHeight: .infinity)
     }
@@ -115,6 +113,7 @@ struct ReaderShellView: View {
         List(selection: sidebarSelection) {
             sidebarSections
         }
+        .listStyle(.sidebar)
 #else
         List {
             sidebarSections

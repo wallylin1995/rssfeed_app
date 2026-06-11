@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 enum HomepageSectionStyle {
     case hero
@@ -141,12 +142,21 @@ extension HomepagePlacementRecord {
 
 extension ArticleRecord {
     var displaySummary: String {
-        if let summary = content?.summary, !summary.isEmpty {
+        let summary = normalizedPlainText(from: content?.summary)
+        if !summary.isEmpty {
             return summary
         }
-        if let text = content?.text, !text.isEmpty {
+
+        let text = normalizedPlainText(from: content?.text)
+        if !text.isEmpty {
             return String(text.prefix(220))
         }
+
+        let html = normalizedPlainText(fromHTML: content?.html)
+        if !html.isEmpty {
+            return String(html.prefix(220))
+        }
+
         return "No summary yet."
     }
 
@@ -171,5 +181,46 @@ extension ArticleRecord {
 
     var articleLink: URL? {
         URL(string: link)
+    }
+
+    var displayBodyText: String {
+        let text = normalizedPlainText(from: content?.text)
+        if !text.isEmpty {
+            return text
+        }
+
+        let html = normalizedPlainText(fromHTML: content?.html)
+        if !html.isEmpty {
+            return html
+        }
+
+        let summary = normalizedPlainText(from: content?.summary)
+        if !summary.isEmpty {
+            return summary
+        }
+
+        return ""
+    }
+
+    private func normalizedPlainText(from text: String?) -> String {
+        guard let text, !text.isEmpty else { return "" }
+
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.contains("<"), trimmed.contains(">") {
+            return normalizedPlainText(fromHTML: trimmed)
+        }
+
+        return trimmed
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func normalizedPlainText(fromHTML html: String?) -> String {
+        guard let html, !html.isEmpty else { return "" }
+
+        return HTMLContentExtractor
+            .plainText(from: html)
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

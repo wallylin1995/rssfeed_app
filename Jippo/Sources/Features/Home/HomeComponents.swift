@@ -32,23 +32,25 @@ struct HeroSectionView: View {
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 20) {
                 if let lead = placements.first, let article = lead.article {
                     StoryArtworkCard(article: article, placement: lead)
                         .onTapGesture { selectedArticleID = article.uuid }
-                        .frame(maxWidth: .infinity, minHeight: 500, maxHeight: 660)
+                        .frame(maxWidth: .infinity, minHeight: 520, maxHeight: 620)
                 }
 
-                if let support = placements.dropFirst().first, let article = support.article {
-                    HeroSupportPanel(article: article, placement: support)
-                        .onTapGesture { selectedArticleID = article.uuid }
-                        .frame(width: 420)
-                        .frame(minHeight: 500, maxHeight: 660)
+                VStack(spacing: 20) {
+                    ForEach(Array(placements.dropFirst().prefix(2))) { support in
+                        if let article = support.article {
+                            HeroSupportPanel(article: article, placement: support)
+                                .onTapGesture { selectedArticleID = article.uuid }
+                        }
+                    }
                 }
+                .frame(width: 360)
             }
-            .cardChrome()
 
-            VStack(spacing: 0) {
+            VStack(spacing: 18) {
                 ForEach(placements) { placement in
                     if let article = placement.article {
                         if placement.storyPresentation == .heroLead {
@@ -58,12 +60,10 @@ struct HeroSectionView: View {
                         } else {
                             HeroSupportPanel(article: article, placement: placement)
                                 .onTapGesture { selectedArticleID = article.uuid }
-                                .frame(minHeight: 260)
                         }
                     }
                 }
             }
-            .cardChrome()
         }
     }
 }
@@ -71,52 +71,46 @@ struct HeroSectionView: View {
 private struct HeroSupportPanel: View {
     let article: ArticleRecord
     let placement: HomepagePlacementRecord
-    @StateObject private var intelligence: ArticleIntelligenceViewModel
-
-    init(article: ArticleRecord, placement: HomepagePlacementRecord) {
-        self.article = article
-        self.placement = placement
-        _intelligence = StateObject(wrappedValue: ArticleIntelligenceViewModel(article: article))
-    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Label(placement.badgeText ?? article.heroBadge, systemImage: "sparkle")
-                    .font(.headline)
-                    .foregroundStyle(.white)
+                Text(placement.badgeText ?? article.heroBadge)
+                    .font(.caption.weight(.black))
+                    .kerning(1.1)
+                    .foregroundStyle(placement.accent.baseColor)
                 Spacer()
-                Text(article.sourceTitle)
-                    .font(.headline.weight(.semibold))
+                Text(article.displayDateText)
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(.secondary)
             }
 
             Text(article.title)
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .font(.system(size: 28, weight: .bold, design: .rounded))
                 .multilineTextAlignment(.leading)
+                .lineLimit(4)
 
             Text(article.displaySummary)
-                .font(.title3)
+                .font(.body)
                 .foregroundStyle(.secondary)
-
-            HomepageCardIntelligenceControls(
-                intelligence: intelligence,
-                accent: placement.accent,
-                style: .inline
-            )
+                .lineLimit(4)
 
             Spacer()
 
             HStack {
+                Text(article.sourceTitle)
+                Text("•")
                 Text(article.displayByline)
                 Spacer()
-                Image(systemName: "ellipsis")
+                Image(systemName: "arrow.up.right")
             }
-            .font(.headline)
+            .font(.subheadline.weight(.semibold))
             .foregroundStyle(.tertiary)
         }
-        .padding(24)
+        .padding(22)
+        .frame(maxWidth: .infinity, minHeight: 250, alignment: .leading)
         .background(JippoPalette.panel)
+        .cardChrome(radius: 28)
     }
 }
 
@@ -141,54 +135,50 @@ struct StoryGridSectionView: View {
     }
 
     private func gridColumns(for width: CGFloat) -> [GridItem] {
-        let minimumCardWidth: CGFloat = width > 1380 ? 360 : 320
-        return [GridItem(.adaptive(minimum: minimumCardWidth, maximum: 520), spacing: 20, alignment: .top)]
+        let minimumCardWidth: CGFloat
+        if width > 1400 {
+            minimumCardWidth = 330
+        } else if width > 980 {
+            minimumCardWidth = 300
+        } else {
+            minimumCardWidth = 260
+        }
+        return [GridItem(.adaptive(minimum: minimumCardWidth, maximum: 420), spacing: 20, alignment: .top)]
     }
 }
 
 private struct StoryTile: View {
     let article: ArticleRecord
     let placement: HomepagePlacementRecord
-    @StateObject private var intelligence: ArticleIntelligenceViewModel
-
-    init(article: ArticleRecord, placement: HomepagePlacementRecord) {
-        self.article = article
-        self.placement = placement
-        _intelligence = StateObject(wrappedValue: ArticleIntelligenceViewModel(article: article))
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             StoryArtworkCard(article: article, placement: placement)
-                .frame(height: placement.storyPresentation == .feature ? 420 : 260)
+                .frame(height: placement.storyPresentation == .feature ? 310 : 230)
 
-            VStack(alignment: .leading, spacing: 12) {
-                Text(article.sourceTitle)
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 8) {
+                    Text(article.sourceTitle)
+                    Text("•")
+                    Text(article.displayDateText)
+                }
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.secondary)
 
                 Text(article.title)
-                    .font(placement.storyPresentation == .feature ? .system(size: 26, weight: .bold, design: .rounded) : .title2.bold())
+                    .font(placement.storyPresentation == .feature ? .system(size: 28, weight: .bold, design: .rounded) : .title3.bold())
                     .multilineTextAlignment(.leading)
+                    .lineLimit(3)
 
-                if placement.storyPresentation == .compact {
-                    Text(article.displaySummary)
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                }
-
-                HomepageCardIntelligenceControls(
-                    intelligence: intelligence,
-                    accent: placement.accent,
-                    style: .inline
-                )
+                Text(article.displaySummary)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(placement.storyPresentation == .feature ? 4 : 3)
 
                 HStack {
-                    Text(article.displayDateText)
-                    Text("•")
                     Text(article.displayByline)
                     Spacer()
-                    Image(systemName: "ellipsis")
+                    Text(placement.badgeText ?? article.heroBadge)
                 }
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.tertiary)
@@ -243,13 +233,6 @@ struct TopicRailSectionView: View {
 struct StoryArtworkCard: View {
     let article: ArticleRecord
     let placement: HomepagePlacementRecord
-    @StateObject private var intelligence: ArticleIntelligenceViewModel
-
-    init(article: ArticleRecord, placement: HomepagePlacementRecord) {
-        self.article = article
-        self.placement = placement
-        _intelligence = StateObject(wrappedValue: ArticleIntelligenceViewModel(article: article))
-    }
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
@@ -279,9 +262,10 @@ struct StoryArtworkCard: View {
                     .foregroundStyle(.white.opacity(0.9))
 
                 Text(article.title)
-                    .font(placement.storyPresentation == .heroLead ? .system(size: 52, weight: .bold, design: .rounded) : .system(size: 32, weight: .bold, design: .rounded))
+                    .font(placement.storyPresentation == .heroLead ? .system(size: 46, weight: .bold, design: .rounded) : .system(size: 30, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.leading)
+                    .lineLimit(placement.storyPresentation == .heroLead ? 4 : 3)
 
                 if placement.storyPresentation == .heroLead {
                     Text(article.displaySummary)
@@ -307,24 +291,17 @@ struct StoryArtworkCard: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            VStack(alignment: .trailing, spacing: 10) {
-                HomepageCardIntelligenceControls(
-                    intelligence: intelligence,
-                    accent: placement.accent,
-                    style: .overlay
-                )
-
-                Circle()
-                    .fill(.black.opacity(0.22))
-                    .frame(width: 34, height: 34)
-                    .overlay {
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.92))
-                    }
-            }
+            Circle()
+                .fill(.black.opacity(0.22))
+                .frame(width: 38, height: 38)
+                .overlay {
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.92))
+                }
             .padding(18)
         }
+        .cardChrome(radius: 34)
         .clipped()
     }
 
@@ -573,7 +550,7 @@ private struct TodayCategoryClusterView: View {
     @Binding var selectedArticleID: UUID?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .lastTextBaseline, spacing: 12) {
                 Label(group.category.shortLabel, systemImage: categorySymbol)
                     .font(.title3.weight(.bold))
@@ -591,61 +568,16 @@ private struct TodayCategoryClusterView: View {
                     .foregroundStyle(group.category.color.opacity(0.88))
             }
 
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: 18) {
-                    featuredCard
-                        .frame(maxWidth: .infinity)
-
-                    VStack(spacing: 14) {
-                        ForEach(secondaryArticles) { article in
-                            TodayCategoryHeadlineRow(article: article)
-                                .onTapGesture { selectedArticleID = article.uuid }
-                        }
-                    }
-                    .frame(width: 360)
-                }
-
-                VStack(spacing: 16) {
-                    featuredCard
-
-                    LazyVGrid(
-                        columns: [GridItem(.adaptive(minimum: 260, maximum: 380), spacing: 16, alignment: .top)],
-                        spacing: 16
-                    ) {
-                        ForEach(secondaryArticles) { article in
-                            TodayCategoryHeadlineRow(article: article)
-                                .onTapGesture { selectedArticleID = article.uuid }
-                        }
-                    }
-                }
-            }
-
-            if !secondaryArticles.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 14) {
-                        ForEach(secondaryArticles) { article in
-                            TodayShelfStoryCard(article: article)
-                                .frame(width: 290)
-                                .onTapGesture { selectedArticleID = article.uuid }
-                        }
-                    }
-                    .padding(.vertical, 2)
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 260, maximum: 420), spacing: 18, alignment: .top)],
+                spacing: 18
+            ) {
+                ForEach(group.articles) { article in
+                    TodayCategoryStoryCard(article: article, category: group.category)
+                        .onTapGesture { selectedArticleID = article.uuid }
                 }
             }
         }
-    }
-
-    private var featuredCard: some View {
-        Group {
-            if let article = group.articles.first {
-                TodayCategoryStoryCard(article: article, category: group.category)
-                    .onTapGesture { selectedArticleID = article.uuid }
-            }
-        }
-    }
-
-    private var secondaryArticles: [ArticleRecord] {
-        Array(group.articles.dropFirst())
     }
 
     private var categorySymbol: String {
@@ -667,111 +599,53 @@ private struct TodayCategoryClusterView: View {
 private struct TodayCategoryStoryCard: View {
     let article: ArticleRecord
     let category: FeedCategory
-    @StateObject private var intelligence: ArticleIntelligenceViewModel
-
-    init(article: ArticleRecord, category: FeedCategory) {
-        self.article = article
-        self.category = category
-        _intelligence = StateObject(wrappedValue: ArticleIntelligenceViewModel(article: article))
-    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 14) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        Text(article.sourceTitle)
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(category.color)
+        VStack(alignment: .leading, spacing: 0) {
+            articleArtwork
+                .frame(height: 220)
 
-                        Text(article.displayDateText)
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Text(article.title)
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(4)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    Text(article.sourceTitle)
+                    Text("•")
+                    Text(article.displayDateText)
                 }
+                .font(.caption.weight(.bold))
+                .foregroundStyle(category.color)
 
-                Spacer(minLength: 0)
+                Text(article.title)
+                    .font(.title3.weight(.bold))
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(3)
 
-                if let imageLink = article.imageLink {
-                    AsyncImage(url: imageLink) { phase in
-                        switch phase {
-                        case .empty:
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(JippoPalette.panelSoft)
-                                .overlay { ProgressView() }
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
-                        case .failure:
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(JippoPalette.panelSoft)
-                        @unknown default:
-                            EmptyView()
-                        }
-                    }
-                    .frame(width: 154, height: 154)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                Text(article.displaySummary)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+
+                HStack(spacing: 8) {
+                    Text(article.displayByline)
+                        .lineLimit(1)
+                    Spacer()
+                    Text(category.shortLabel)
                 }
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.tertiary)
             }
-
-            Text(article.displaySummary)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .lineLimit(4)
-
-            HomepageCardIntelligenceControls(
-                intelligence: intelligence,
-                accent: accent,
-                style: .inline
-            )
-
-            HStack(spacing: 8) {
-                Text(article.displayByline)
-                    .lineLimit(1)
-                Text("•")
-                Text(category.shortLabel)
-            }
-            .font(.caption.weight(.medium))
-            .foregroundStyle(.tertiary)
+            .padding(20)
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .background(JippoPalette.panel)
         .cardChrome(radius: 28)
     }
 
-    private var accent: StoryAccent {
-        switch category {
-        case .world:
-            return .currant
-        case .technology:
-            return .electric
-        case .ideas:
-            return .plum
-        case .taiwan:
-            return .berry
-        case .science:
-            return .mint
-        }
-    }
-}
-
-private struct TodayCategoryHeadlineRow: View {
-    let article: ArticleRecord
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 14) {
+    private var articleArtwork: some View {
+        Group {
             if let imageLink = article.imageLink {
                 AsyncImage(url: imageLink) { phase in
                     switch phase {
                     case .empty:
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        RoundedRectangle(cornerRadius: 0, style: .continuous)
                             .fill(JippoPalette.panelSoft)
                             .overlay { ProgressView() }
                     case .success(let image):
@@ -779,40 +653,45 @@ private struct TodayCategoryHeadlineRow: View {
                             .resizable()
                             .scaledToFill()
                     case .failure:
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(JippoPalette.panelSoft)
+                        fallbackArtwork
                     @unknown default:
-                        EmptyView()
+                        fallbackArtwork
                     }
                 }
-                .frame(width: 82, height: 82)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            } else {
+                fallbackArtwork
             }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text(article.title)
-                    .font(.headline.weight(.bold))
-                    .lineLimit(3)
-
-                HStack(spacing: 8) {
-                    Text(article.sourceTitle)
-                    Text("•")
-                    Text(article.displayDateText)
-                }
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
-            }
-
-            Spacer(minLength: 0)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(JippoPalette.panel)
-        .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(.white.opacity(0.05), lineWidth: 1)
+        .clipped()
+    }
+
+    private var fallbackArtwork: some View {
+        ZStack {
+            LinearGradient(
+                colors: [category.color.opacity(0.9), JippoPalette.panelSoft],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            Image(systemName: categorySymbol)
+                .font(.system(size: 42, weight: .bold))
+                .foregroundStyle(.white.opacity(0.88))
         }
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private var categorySymbol: String {
+        switch category {
+        case .world:
+            return "globe.americas.fill"
+        case .technology:
+            return "cpu.fill"
+        case .ideas:
+            return "lightbulb.max.fill"
+        case .taiwan:
+            return "map.fill"
+        case .science:
+            return "atom"
+        }
     }
 }
 
