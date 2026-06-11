@@ -36,14 +36,14 @@ struct HeroSectionView: View {
                 if let lead = placements.first, let article = lead.article {
                     StoryArtworkCard(article: article, placement: lead)
                         .onTapGesture { selectedArticleID = article.uuid }
-                        .frame(maxWidth: .infinity, minHeight: 420, maxHeight: 560)
+                        .frame(maxWidth: .infinity, minHeight: 500, maxHeight: 660)
                 }
 
                 if let support = placements.dropFirst().first, let article = support.article {
                     HeroSupportPanel(article: article, placement: support)
                         .onTapGesture { selectedArticleID = article.uuid }
                         .frame(width: 420)
-                        .frame(minHeight: 420, maxHeight: 560)
+                        .frame(minHeight: 500, maxHeight: 660)
                 }
             }
             .cardChrome()
@@ -54,7 +54,7 @@ struct HeroSectionView: View {
                         if placement.storyPresentation == .heroLead {
                             StoryArtworkCard(article: article, placement: placement)
                                 .onTapGesture { selectedArticleID = article.uuid }
-                                .frame(minHeight: 360)
+                                .frame(minHeight: 460)
                         } else {
                             HeroSupportPanel(article: article, placement: placement)
                                 .onTapGesture { selectedArticleID = article.uuid }
@@ -279,15 +279,32 @@ struct StoryArtworkCard: View {
                     .foregroundStyle(.white.opacity(0.9))
 
                 Text(article.title)
-                    .font(placement.storyPresentation == .heroLead ? .system(size: 38, weight: .bold, design: .rounded) : .system(size: 30, weight: .bold, design: .rounded))
+                    .font(placement.storyPresentation == .heroLead ? .system(size: 52, weight: .bold, design: .rounded) : .system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.leading)
+
+                if placement.storyPresentation == .heroLead {
+                    Text(article.displaySummary)
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(.white.opacity(0.82))
+                        .lineLimit(3)
+                }
 
                 Text(article.sourceTitle)
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.82))
             }
-            .padding(24)
+            .padding(28)
+        }
+        .overlay(alignment: .bottomLeading) {
+            if placement.storyPresentation == .heroLead {
+                LinearGradient(
+                    colors: [.clear, .black.opacity(0.78)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .allowsHitTesting(false)
+            }
         }
         .overlay(alignment: .topTrailing) {
             VStack(alignment: .trailing, spacing: 10) {
@@ -602,6 +619,19 @@ private struct TodayCategoryClusterView: View {
                     }
                 }
             }
+
+            if !secondaryArticles.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 14) {
+                        ForEach(secondaryArticles) { article in
+                            TodayShelfStoryCard(article: article)
+                                .frame(width: 290)
+                                .onTapGesture { selectedArticleID = article.uuid }
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
         }
     }
 
@@ -777,6 +807,57 @@ private struct TodayCategoryHeadlineRow: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(JippoPalette.panel)
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(.white.opacity(0.05), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+}
+
+private struct TodayShelfStoryCard: View {
+    let article: ArticleRecord
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let imageLink = article.imageLink {
+                AsyncImage(url: imageLink) { phase in
+                    switch phase {
+                    case .empty:
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(JippoPalette.panelSoft)
+                            .overlay { ProgressView() }
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    case .failure:
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(JippoPalette.panelSoft)
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+                .frame(height: 158)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(article.sourceTitle)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+
+                Text(article.title)
+                    .font(.headline.weight(.bold))
+                    .lineLimit(3)
+
+                Text(article.displayDateText)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(16)
         .background(JippoPalette.panel)
         .overlay {
             RoundedRectangle(cornerRadius: 22, style: .continuous)

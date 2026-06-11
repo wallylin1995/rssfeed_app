@@ -5,21 +5,41 @@ struct ReaderShellView: View {
     @EnvironmentObject private var appModel: AppModel
     @Environment(\.modelContext) private var modelContext
     @Query(sort: [SortDescriptor(\FeedRecord.displayOrder)]) private var feeds: [FeedRecord]
-    @State private var columnVisibility: NavigationSplitViewVisibility = .doubleColumn
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            sidebarList
-            .scrollContentBackground(.hidden)
-            .background(JippoPalette.canvas)
-            .navigationTitle("Jippo")
-        } content: {
-            ReaderContentColumn(selection: appModel.selectedSidebar, selectedArticleID: selectedArticleID)
-                .modifier(ContentColumnWidthModifier(selection: appModel.selectedSidebar))
-        } detail: {
-            ReaderDetailColumn(selection: appModel.selectedSidebar, selectedArticleID: selectedArticleID)
+        Group {
+#if os(macOS)
+            if showsExpandedToday {
+                NavigationSplitView {
+                    sidebarRoot
+                } detail: {
+                    ReaderContentColumn(selection: appModel.selectedSidebar, selectedArticleID: selectedArticleID)
+                        .modifier(ContentColumnWidthModifier(selection: appModel.selectedSidebar, isExpandedToday: true))
+                }
+                .navigationSplitViewStyle(.balanced)
+            } else {
+                NavigationSplitView {
+                    sidebarRoot
+                } content: {
+                    ReaderContentColumn(selection: appModel.selectedSidebar, selectedArticleID: selectedArticleID)
+                        .modifier(ContentColumnWidthModifier(selection: appModel.selectedSidebar, isExpandedToday: false))
+                } detail: {
+                    ReaderDetailColumn(selection: appModel.selectedSidebar, selectedArticleID: selectedArticleID)
+                }
+                .navigationSplitViewStyle(.balanced)
+            }
+#else
+            NavigationSplitView {
+                sidebarRoot
+            } content: {
+                ReaderContentColumn(selection: appModel.selectedSidebar, selectedArticleID: selectedArticleID)
+                    .modifier(ContentColumnWidthModifier(selection: appModel.selectedSidebar, isExpandedToday: false))
+            } detail: {
+                ReaderDetailColumn(selection: appModel.selectedSidebar, selectedArticleID: selectedArticleID)
+            }
+            .navigationSplitViewStyle(.balanced)
+#endif
         }
-        .navigationSplitViewStyle(.balanced)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -43,15 +63,6 @@ struct ReaderShellView: View {
         } message: {
             Text(appModel.lastErrorMessage ?? "Unknown error")
         }
-        .onAppear {
-            syncColumnVisibility()
-        }
-        .onChange(of: appModel.selectedSidebar) { _, _ in
-            syncColumnVisibility()
-        }
-        .onChange(of: appModel.selectedArticleID) { _, _ in
-            syncColumnVisibility()
-        }
     }
 
     private var sidebarSelection: Binding<ReaderSidebarSelection> {
@@ -64,11 +75,11 @@ struct ReaderShellView: View {
         )
     }
 
-    private func syncColumnVisibility() {
+    private var showsExpandedToday: Bool {
 #if os(macOS)
-        columnVisibility = (appModel.selectedSidebar == .today && appModel.selectedArticleID == nil) ? .doubleColumn : .all
+        appModel.selectedSidebar == .today && appModel.selectedArticleID == nil
 #else
-        columnVisibility = .automatic
+        false
 #endif
     }
 
@@ -88,6 +99,14 @@ struct ReaderShellView: View {
                 }
             }
         )
+    }
+
+    private var sidebarRoot: some View {
+        sidebarList
+            .scrollContentBackground(.hidden)
+            .background(JippoPalette.canvas)
+            .navigationTitle("Jippo")
+            .frame(maxHeight: .infinity)
     }
 
     @ViewBuilder
@@ -156,13 +175,18 @@ struct ReaderShellView: View {
 
 private struct ContentColumnWidthModifier: ViewModifier {
     let selection: ReaderSidebarSelection
+    let isExpandedToday: Bool
 
     func body(content: Content) -> some View {
 #if os(macOS)
-        content
-            .navigationSplitViewColumnWidth(
-                selection == .today ? 760 : 420
-            )
+        if isExpandedToday {
+            content
+        } else {
+            content
+                .navigationSplitViewColumnWidth(
+                    selection == .today ? 760 : 420
+                )
+        }
 #else
         content
 #endif
