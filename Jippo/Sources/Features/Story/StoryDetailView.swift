@@ -1,36 +1,82 @@
 import SwiftUI
 
 struct StoryDetailView: View {
-    let card: StoryCard
+    let article: ArticleRecord
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                StoryArtworkCard(card: card)
-                    .frame(height: 360)
+                if let imageLink = article.imageLink {
+                    AsyncImage(url: imageLink) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .frame(maxWidth: .infinity, minHeight: 280)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(maxWidth: .infinity, minHeight: 280, maxHeight: 420)
+                                .clipped()
+                        case .failure:
+                            Rectangle()
+                                .fill(JippoPalette.panelSoft)
+                                .frame(maxWidth: .infinity, minHeight: 280, maxHeight: 420)
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
                     .cardChrome(radius: 34)
+                }
 
                 VStack(alignment: .leading, spacing: 14) {
-                    Text(card.source.title)
+                    Text(article.sourceTitle)
                         .font(.headline)
                         .foregroundStyle(JippoPalette.highlight)
 
-                    Text(card.headline)
+                    Text(article.title)
                         .font(.system(size: 38, weight: .bold, design: .rounded))
 
-                    Text(card.summary)
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 10) {
+                        Text(article.displayDateText)
+                        Text("•")
+                        Text(article.displayByline)
+                        if let topicLabel = article.topicLabel {
+                            Text("•")
+                            Text(topicLabel)
+                        }
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+
+                    if let summary = article.content?.summary, !summary.isEmpty {
+                        Text(summary)
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let link = article.articleLink {
+                        Button {
+                            openURL(link)
+                        } label: {
+                            Label("Open Original Article", systemImage: "safari")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(JippoPalette.highlight)
+                    }
 
                     Divider()
                         .overlay(.white.opacity(0.1))
 
-                    Text("Why this section exists")
-                        .font(.title2.bold())
-
-                    Text("Jippo’s homepage is meant to feel curated without inventing any article facts. This detail screen is placeholder content for the first scaffold, but its structure already matches the future path: source metadata, article cache, AI annotations, and section placement can all land here cleanly.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
+                    if let text = article.content?.text, !text.isEmpty {
+                        Text(text)
+                            .font(.body)
+                            .textSelection(.enabled)
+                    } else {
+                        Text("This article has not cached its body text yet.")
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .padding(24)
@@ -38,15 +84,19 @@ struct StoryDetailView: View {
             .frame(maxWidth: .infinity)
         }
         .background(JippoPalette.canvas.ignoresSafeArea())
-        .navigationTitle(card.categoryLabel)
+        .navigationTitle(article.sourceTitle)
         .jippoTitleDisplayMode(.inline)
     }
 }
 
 struct StoryDetailView_Previews: PreviewProvider {
     static var previews: some View {
-        NavigationStack {
-            StoryDetailView(card: HomepagePlan.sample(feeds: SampleFeedCatalog.fallbackFeeds).sections[0].cards[0])
+        let feed = FeedRecord(feedURL: "https://example.com", title: "Preview Feed", categoryKey: FeedCategory.world.rawValue)
+        let article = ArticleRecord(title: "Preview Story", link: "https://example.com/story", sourceTitle: "Preview Feed", feed: feed)
+        article.content = ArticleContentRecord(summary: "Summary", text: "Body text", html: "<p>Body text</p>", article: article)
+
+        return NavigationStack {
+            StoryDetailView(article: article)
                 .preferredColorScheme(.dark)
         }
     }

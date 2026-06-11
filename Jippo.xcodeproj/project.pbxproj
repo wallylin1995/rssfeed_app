@@ -7,15 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1D56DEDA1ED8D8BB690924FD /* AppBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2F9F540CE7AD2C33A543C45 /* AppBootstrap.swift */; };
 		250FD2D08AB38039084049A7 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63E3C4C3E2E6317C3A389047 /* AppModel.swift */; };
 		2848075FF54FC40B5DBF8F3B /* AppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB34335A81134469D092E53F /* AppView.swift */; };
 		29F2636A5FDE2F34FEE77216 /* StoryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB562ED8E0E6CAB6B94B6C8E /* StoryDetailView.swift */; };
 		5778FE870BD5BF2D8D707C25 /* BuiltInRSS.opml in Resources */ = {isa = PBXBuildFile; fileRef = 261DABCEECAE829845793A79 /* BuiltInRSS.opml */; };
-		7DF796E0BE1A980DD3B760D4 /* AppTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 946F2437D373133FC69EB40D /* AppTab.swift */; };
-		8CE9662D453AFEC487A73ACB /* SavedArticlesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA726B9A1F0B72AED2AC8C8B /* SavedArticlesView.swift */; };
+		75404B8FBFB5D691F65CF8DA /* RSSFeedParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 806F9496F4164913B16E88CB /* RSSFeedParser.swift */; };
+		87A12A9AF04A5F0AE90D8F62 /* ReaderShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D3E42F29B1066B58E03582 /* ReaderShellView.swift */; };
 		95BD1D4946178EE9DA59D3E2 /* JippoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C43B526B53654B59FBEB83EA /* JippoApp.swift */; };
+		96B580AB94989D8CC9B03943 /* HomepagePlanning.swift in Sources */ = {isa = PBXBuildFile; fileRef = F547F9A747057E2C467C18D2 /* HomepagePlanning.swift */; };
+		B66618583FD7ED0EFE33882B /* RSSSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47D4DA7E47EA243DC73AC77 /* RSSSyncService.swift */; };
 		CB2C167CB2CAEDC90EC3F00A /* HomeComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1515C42D43C15AA5384C4B1E /* HomeComponents.swift */; };
-		D7F0AE62C3CC5170C85D6303 /* FeedDirectoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A074058C01E294AB06D6CCA /* FeedDirectoryView.swift */; };
+		D72C513DB0A215105F240AF3 /* JippoModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F30215074BF8834E920D90A /* JippoModels.swift */; };
 		DF7D9397CB092BCD6E2D0081 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4F6F12A37BF0EE06FC01BA /* HomeView.swift */; };
 		E7AFAC3EAC8A5D844AE97919 /* FeedLoading.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AE02938968899D50DD709FD /* FeedLoading.swift */; };
 		ED17ABC205EF83884DD895F3 /* JippoPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF61D6D1A15303BAA16E74CF /* JippoPalette.swift */; };
@@ -27,17 +30,20 @@
 /* Begin PBXFileReference section */
 		1515C42D43C15AA5384C4B1E /* HomeComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeComponents.swift; sourceTree = "<group>"; };
 		261DABCEECAE829845793A79 /* BuiltInRSS.opml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = BuiltInRSS.opml; sourceTree = "<group>"; };
+		3F30215074BF8834E920D90A /* JippoModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JippoModels.swift; sourceTree = "<group>"; };
 		5AE02938968899D50DD709FD /* FeedLoading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedLoading.swift; sourceTree = "<group>"; };
 		63E3C4C3E2E6317C3A389047 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
-		7A074058C01E294AB06D6CCA /* FeedDirectoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedDirectoryView.swift; sourceTree = "<group>"; };
 		7C4F6F12A37BF0EE06FC01BA /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
-		946F2437D373133FC69EB40D /* AppTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTab.swift; sourceTree = "<group>"; };
+		806F9496F4164913B16E88CB /* RSSFeedParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RSSFeedParser.swift; sourceTree = "<group>"; };
+		A47D4DA7E47EA243DC73AC77 /* RSSSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RSSSyncService.swift; sourceTree = "<group>"; };
 		B004D1100DD60EBCEE9B17CB /* FeedSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedSource.swift; sourceTree = "<group>"; };
+		B2F9F540CE7AD2C33A543C45 /* AppBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBootstrap.swift; sourceTree = "<group>"; };
 		B8F84721A51C3779B858703F /* HomepageModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomepageModels.swift; sourceTree = "<group>"; };
 		C43B526B53654B59FBEB83EA /* JippoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JippoApp.swift; sourceTree = "<group>"; };
 		DADFB767EB2784D35F7CB8FD /* OPMLFeedLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OPMLFeedLoader.swift; sourceTree = "<group>"; };
 		DB562ED8E0E6CAB6B94B6C8E /* StoryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoryDetailView.swift; sourceTree = "<group>"; };
-		EA726B9A1F0B72AED2AC8C8B /* SavedArticlesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedArticlesView.swift; sourceTree = "<group>"; };
+		F547F9A747057E2C467C18D2 /* HomepagePlanning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomepagePlanning.swift; sourceTree = "<group>"; };
+		F5D3E42F29B1066B58E03582 /* ReaderShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderShellView.swift; sourceTree = "<group>"; };
 		FB34335A81134469D092E53F /* AppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppView.swift; sourceTree = "<group>"; };
 		FE799EC6AD6F1F347D5C2D20 /* Jippo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Jippo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FF61D6D1A15303BAA16E74CF /* JippoPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JippoPalette.swift; sourceTree = "<group>"; };
@@ -69,12 +75,12 @@
 			);
 			sourceTree = "<group>";
 		};
-		34A0891AC9DFEF2E82D37596 /* Saved */ = {
+		39D5DB3CB5D3A3A3AEC13247 /* Reader */ = {
 			isa = PBXGroup;
 			children = (
-				EA726B9A1F0B72AED2AC8C8B /* SavedArticlesView.swift */,
+				F5D3E42F29B1066B58E03582 /* ReaderShellView.swift */,
 			);
-			path = Saved;
+			path = Reader;
 			sourceTree = "<group>";
 		};
 		3FB0DCAB24064115C9D1D9BB /* Jippo */ = {
@@ -91,9 +97,11 @@
 			children = (
 				C43B526B53654B59FBEB83EA /* JippoApp.swift */,
 				4BD5BE977E2B469C96059E4B /* App */,
+				AB126026CCB3939FAD2B1B74 /* Data */,
 				8A70CDAE444004B9461BBD54 /* Domain */,
 				74A41BACEF4D159985ED3629 /* Features */,
 				BBC30E24874B8851C64025A4 /* Infrastructure */,
+				CD0E4AF7E5758166177978B7 /* Services */,
 				009CBB3FAE1015BF2BE03FE5 /* Style */,
 			);
 			path = Sources;
@@ -102,19 +110,11 @@
 		4BD5BE977E2B469C96059E4B /* App */ = {
 			isa = PBXGroup;
 			children = (
+				B2F9F540CE7AD2C33A543C45 /* AppBootstrap.swift */,
 				63E3C4C3E2E6317C3A389047 /* AppModel.swift */,
-				946F2437D373133FC69EB40D /* AppTab.swift */,
 				FB34335A81134469D092E53F /* AppView.swift */,
 			);
 			path = App;
-			sourceTree = "<group>";
-		};
-		4F12ACFC7B5E3B144DD190A9 /* Feeds */ = {
-			isa = PBXGroup;
-			children = (
-				7A074058C01E294AB06D6CCA /* FeedDirectoryView.swift */,
-			);
-			path = Feeds;
 			sourceTree = "<group>";
 		};
 		5B2AF70C3E3C20DF1E619F8E /* Resources */ = {
@@ -128,9 +128,8 @@
 		74A41BACEF4D159985ED3629 /* Features */ = {
 			isa = PBXGroup;
 			children = (
-				4F12ACFC7B5E3B144DD190A9 /* Feeds */,
 				05227A9697AD45F6F0A28499 /* Home */,
-				34A0891AC9DFEF2E82D37596 /* Saved */,
+				39D5DB3CB5D3A3A3AEC13247 /* Reader */,
 				CE95EEB9F927864ABF700B58 /* Story */,
 			);
 			path = Features;
@@ -153,6 +152,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		AB126026CCB3939FAD2B1B74 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				F547F9A747057E2C467C18D2 /* HomepagePlanning.swift */,
+				3F30215074BF8834E920D90A /* JippoModels.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
 		BBC30E24874B8851C64025A4 /* Infrastructure */ = {
 			isa = PBXGroup;
 			children = (
@@ -160,6 +168,15 @@
 				DADFB767EB2784D35F7CB8FD /* OPMLFeedLoader.swift */,
 			);
 			path = Infrastructure;
+			sourceTree = "<group>";
+		};
+		CD0E4AF7E5758166177978B7 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				806F9496F4164913B16E88CB /* RSSFeedParser.swift */,
+				A47D4DA7E47EA243DC73AC77 /* RSSSyncService.swift */,
+			);
+			path = Services;
 			sourceTree = "<group>";
 		};
 		CE95EEB9F927864ABF700B58 /* Story */ = {
@@ -240,19 +257,22 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1D56DEDA1ED8D8BB690924FD /* AppBootstrap.swift in Sources */,
 				250FD2D08AB38039084049A7 /* AppModel.swift in Sources */,
-				7DF796E0BE1A980DD3B760D4 /* AppTab.swift in Sources */,
 				2848075FF54FC40B5DBF8F3B /* AppView.swift in Sources */,
-				D7F0AE62C3CC5170C85D6303 /* FeedDirectoryView.swift in Sources */,
 				E7AFAC3EAC8A5D844AE97919 /* FeedLoading.swift in Sources */,
 				F64A67179C7B1C50A80F3079 /* FeedSource.swift in Sources */,
 				CB2C167CB2CAEDC90EC3F00A /* HomeComponents.swift in Sources */,
 				DF7D9397CB092BCD6E2D0081 /* HomeView.swift in Sources */,
 				F6BB11691FFFF3DE824B2093 /* HomepageModels.swift in Sources */,
+				96B580AB94989D8CC9B03943 /* HomepagePlanning.swift in Sources */,
 				95BD1D4946178EE9DA59D3E2 /* JippoApp.swift in Sources */,
+				D72C513DB0A215105F240AF3 /* JippoModels.swift in Sources */,
 				ED17ABC205EF83884DD895F3 /* JippoPalette.swift in Sources */,
 				F459D15704050837E0765D65 /* OPMLFeedLoader.swift in Sources */,
-				8CE9662D453AFEC487A73ACB /* SavedArticlesView.swift in Sources */,
+				75404B8FBFB5D691F65CF8DA /* RSSFeedParser.swift in Sources */,
+				B66618583FD7ED0EFE33882B /* RSSSyncService.swift in Sources */,
+				87A12A9AF04A5F0AE90D8F62 /* ReaderShellView.swift in Sources */,
 				29F2636A5FDE2F34FEE77216 /* StoryDetailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

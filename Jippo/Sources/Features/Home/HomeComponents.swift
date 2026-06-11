@@ -16,18 +16,21 @@ struct SectionHeaderView: View {
 }
 
 struct HeroSectionView: View {
-    let cards: [StoryCard]
+    let placements: [HomepagePlacementRecord]
+    @Binding var selectedArticleID: UUID?
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 0) {
-                if let lead = cards.first {
-                    StoryArtworkCard(card: lead)
+                if let lead = placements.first, let article = lead.article {
+                    StoryArtworkCard(article: article, placement: lead)
+                        .onTapGesture { selectedArticleID = article.uuid }
                         .frame(maxWidth: .infinity, minHeight: 420, maxHeight: 560)
                 }
 
-                if let support = cards.dropFirst().first {
-                    HeroSupportPanel(card: support)
+                if let support = placements.dropFirst().first, let article = support.article {
+                    HeroSupportPanel(article: article, placement: support)
+                        .onTapGesture { selectedArticleID = article.uuid }
                         .frame(width: 420)
                         .frame(minHeight: 420, maxHeight: 560)
                 }
@@ -35,13 +38,17 @@ struct HeroSectionView: View {
             .cardChrome()
 
             VStack(spacing: 0) {
-                ForEach(cards) { card in
-                    if card.presentation == .heroLead {
-                        StoryArtworkCard(card: card)
-                            .frame(minHeight: 360)
-                    } else {
-                        HeroSupportPanel(card: card)
-                            .frame(minHeight: 260)
+                ForEach(placements) { placement in
+                    if let article = placement.article {
+                        if placement.storyPresentation == .heroLead {
+                            StoryArtworkCard(article: article, placement: placement)
+                                .onTapGesture { selectedArticleID = article.uuid }
+                                .frame(minHeight: 360)
+                        } else {
+                            HeroSupportPanel(article: article, placement: placement)
+                                .onTapGesture { selectedArticleID = article.uuid }
+                                .frame(minHeight: 260)
+                        }
                     }
                 }
             }
@@ -51,32 +58,33 @@ struct HeroSectionView: View {
 }
 
 private struct HeroSupportPanel: View {
-    let card: StoryCard
+    let article: ArticleRecord
+    let placement: HomepagePlacementRecord
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
-                Label(card.categoryLabel, systemImage: "sparkle")
+                Label(placement.badgeText ?? article.heroBadge, systemImage: "sparkle")
                     .font(.headline)
                     .foregroundStyle(.white)
                 Spacer()
-                Text(card.source.title)
+                Text(article.sourceTitle)
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
 
-            Text(card.headline)
+            Text(article.title)
                 .font(.system(size: 34, weight: .bold, design: .rounded))
                 .multilineTextAlignment(.leading)
 
-            Text(card.summary)
+            Text(article.displaySummary)
                 .font(.title3)
                 .foregroundStyle(.secondary)
 
             Spacer()
 
             HStack {
-                Text(card.byline)
+                Text(article.displayByline)
                 Spacer()
                 Image(systemName: "ellipsis")
             }
@@ -89,22 +97,20 @@ private struct HeroSupportPanel: View {
 }
 
 struct StoryGridSectionView: View {
-    let cards: [StoryCard]
+    let placements: [HomepagePlacementRecord]
+    @Binding var selectedArticleID: UUID?
 
     var body: some View {
         GeometryReader { proxy in
             let columns = gridColumns(for: proxy.size.width)
 
             LazyVGrid(columns: columns, spacing: 20) {
-                ForEach(cards) { card in
-                    NavigationLink(value: card) {
-                        StoryTile(card: card)
+                ForEach(placements) { placement in
+                    if let article = placement.article {
+                        StoryTile(article: article, placement: placement)
+                            .onTapGesture { selectedArticleID = article.uuid }
                     }
-                    .buttonStyle(.plain)
                 }
-            }
-            .navigationDestination(for: StoryCard.self) { card in
-                StoryDetailView(card: card)
             }
         }
         .frame(minHeight: 760)
@@ -120,32 +126,33 @@ struct StoryGridSectionView: View {
 }
 
 private struct StoryTile: View {
-    let card: StoryCard
+    let article: ArticleRecord
+    let placement: HomepagePlacementRecord
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            StoryArtworkCard(card: card)
-                .frame(height: card.presentation == .feature ? 420 : 260)
+            StoryArtworkCard(article: article, placement: placement)
+                .frame(height: placement.storyPresentation == .feature ? 420 : 260)
 
             VStack(alignment: .leading, spacing: 12) {
-                Text(card.source.title)
+                Text(article.sourceTitle)
                     .font(.headline)
                     .foregroundStyle(.secondary)
 
-                Text(card.headline)
-                    .font(card.presentation == .feature ? .system(size: 26, weight: .bold, design: .rounded) : .title2.bold())
+                Text(article.title)
+                    .font(placement.storyPresentation == .feature ? .system(size: 26, weight: .bold, design: .rounded) : .title2.bold())
                     .multilineTextAlignment(.leading)
 
-                if card.presentation == .compact {
-                    Text(card.summary)
+                if placement.storyPresentation == .compact {
+                    Text(article.displaySummary)
                         .font(.body)
                         .foregroundStyle(.secondary)
                 }
 
                 HStack {
-                    Text(card.timeLabel)
+                    Text(article.displayDateText)
                     Text("•")
-                    Text(card.byline)
+                    Text(article.displayByline)
                     Spacer()
                     Image(systemName: "ellipsis")
                 }
@@ -161,25 +168,26 @@ private struct StoryTile: View {
 }
 
 struct TopicRailSectionView: View {
-    let cards: [StoryCard]
+    let placements: [HomepagePlacementRecord]
+    @Binding var selectedArticleID: UUID?
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 18) {
-                ForEach(cards) { card in
-                    NavigationLink(value: card) {
+                ForEach(placements) { placement in
+                    if let article = placement.article {
                         HStack(spacing: 16) {
-                            StoryGlyph(accent: card.accent)
+                            StoryGlyph(accent: placement.accent)
                                 .frame(width: 74, height: 74)
 
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(card.categoryLabel)
+                                Text(placement.badgeText ?? article.heroBadge)
                                     .font(.caption.weight(.bold))
                                     .foregroundStyle(JippoPalette.highlight)
-                                Text(card.headline)
+                                Text(article.title)
                                     .font(.headline.weight(.bold))
                                     .lineLimit(3)
-                                Text(card.source.title)
+                                Text(article.sourceTitle)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -190,53 +198,8 @@ struct TopicRailSectionView: View {
                         .frame(width: 360, alignment: .leading)
                         .background(JippoPalette.panel)
                         .cardChrome(radius: 24)
+                        .onTapGesture { selectedArticleID = article.uuid }
                     }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-        .navigationDestination(for: StoryCard.self) { card in
-            StoryDetailView(card: card)
-        }
-    }
-}
-
-struct FeedCategoryOverview: View {
-    let feeds: [FeedSource]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Feed Landscape")
-                .font(.title.bold())
-
-            ForEach(FeedCategory.allCases, id: \.self) { category in
-                let categoryFeeds = feeds.filter { $0.category == category }
-                if !categoryFeeds.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Text(category.shortLabel)
-                                .font(.headline.bold())
-                            Text(category.title)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 10)], alignment: .leading, spacing: 10) {
-                            ForEach(categoryFeeds) { feed in
-                                Text(feed.title)
-                                    .font(.subheadline.weight(.semibold))
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(JippoPalette.panelSoft)
-                                    .clipShape(Capsule())
-                            }
-                        }
-                    }
-                    .padding(20)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(JippoPalette.panel)
-                    .cardChrome(radius: 28)
                 }
             }
         }
@@ -244,11 +207,53 @@ struct FeedCategoryOverview: View {
 }
 
 struct StoryArtworkCard: View {
-    let card: StoryCard
+    let article: ArticleRecord
+    let placement: HomepagePlacementRecord
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            LinearGradient(colors: card.accent.colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+            if let imageLink = article.imageLink {
+                AsyncImage(url: imageLink) { phase in
+                    switch phase {
+                    case .empty:
+                        loadingArtwork
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    case .failure:
+                        fallbackArtwork
+                    @unknown default:
+                        fallbackArtwork
+                    }
+                }
+            } else {
+                fallbackArtwork
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text((placement.badgeText ?? article.heroBadge).uppercased())
+                    .font(.caption.weight(.black))
+                    .kerning(1.2)
+                    .foregroundStyle(.white.opacity(0.9))
+
+                Text(article.title)
+                    .font(placement.storyPresentation == .heroLead ? .system(size: 38, weight: .bold, design: .rounded) : .system(size: 30, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.leading)
+
+                Text(article.sourceTitle)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.82))
+            }
+            .padding(24)
+        }
+        .clipped()
+    }
+
+    private var fallbackArtwork: some View {
+        ZStack {
+            LinearGradient(colors: placement.accent.colors, startPoint: .topLeading, endPoint: .bottomTrailing)
 
             RoundedRectangle(cornerRadius: 40)
                 .fill(.white.opacity(0.07))
@@ -256,26 +261,17 @@ struct StoryArtworkCard: View {
                 .blur(radius: 4)
                 .offset(x: 160, y: -120)
 
-            StoryGlyph(accent: card.accent)
+            StoryGlyph(accent: placement.accent)
                 .frame(width: 250, height: 250)
                 .offset(x: 36, y: 28)
+        }
+    }
 
-            VStack(alignment: .leading, spacing: 10) {
-                Text(card.categoryLabel.uppercased())
-                    .font(.caption.weight(.black))
-                    .kerning(1.2)
-                    .foregroundStyle(.white.opacity(0.9))
-
-                Text(card.headline)
-                    .font(card.presentation == .heroLead ? .system(size: 38, weight: .bold, design: .rounded) : .system(size: 30, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .multilineTextAlignment(.leading)
-
-                Text(card.source.title)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.82))
-            }
-            .padding(24)
+    private var loadingArtwork: some View {
+        ZStack {
+            fallbackArtwork
+            ProgressView()
+                .tint(.white)
         }
     }
 }
