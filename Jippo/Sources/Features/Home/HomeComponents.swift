@@ -5,11 +5,22 @@ struct SectionHeaderView: View {
     let subtitle: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Capsule()
+                    .fill(JippoPalette.highlight)
+                    .frame(width: 24, height: 8)
+
+                Text("CURATED")
+                    .font(.caption2.weight(.black))
+                    .kerning(1.5)
+                    .foregroundStyle(JippoPalette.highlight)
+            }
+
             Text(title)
-                .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                .font(.system(size: 34, weight: .bold, design: .rounded))
             Text(subtitle)
-                .font(.headline)
+                .font(.title3.weight(.medium))
                 .foregroundStyle(.secondary)
         }
     }
@@ -247,6 +258,17 @@ struct StoryArtworkCard: View {
                     .foregroundStyle(.white.opacity(0.82))
             }
             .padding(24)
+        }
+        .overlay(alignment: .topTrailing) {
+            Circle()
+                .fill(.black.opacity(0.22))
+                .frame(width: 34, height: 34)
+                .overlay {
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.92))
+                }
+                .padding(18)
         }
         .clipped()
     }

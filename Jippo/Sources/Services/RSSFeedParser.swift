@@ -242,9 +242,7 @@ enum HTMLContentExtractor {
     }
 
     private static func decodeHTMLEntities(in text: String) -> String {
-        let unescaped = CFXMLCreateStringByUnescapingEntities(nil, text as CFString, nil) as String? ?? text
-
-        return unescaped
+        text
             .replacingOccurrences(of: "\u{00A0}", with: " ")
             .replacingOccurrences(of: "&nbsp;", with: " ")
             .replacingOccurrences(of: "&amp;", with: "&")

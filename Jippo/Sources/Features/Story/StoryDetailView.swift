@@ -2,7 +2,7 @@ import SwiftUI
 
 struct StoryDetailView: View {
     let article: ArticleRecord
-    @Environment(\.openURL) private var openURL
+    @State private var showingEmbeddedBrowser = false
 
     var body: some View {
         ScrollView {
@@ -56,11 +56,11 @@ struct StoryDetailView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    if let link = article.articleLink {
+                    if article.articleLink != nil {
                         Button {
-                            openURL(link)
+                            showingEmbeddedBrowser = true
                         } label: {
-                            Label("Open Original Article", systemImage: "safari")
+                            Label("Open Original Article", systemImage: "globe")
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(JippoPalette.highlight)
@@ -86,6 +86,9 @@ struct StoryDetailView: View {
         .background(JippoPalette.canvas.ignoresSafeArea())
         .navigationTitle(article.sourceTitle)
         .jippoTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingEmbeddedBrowser) {
+            EmbeddedArticleBrowserView(article: article)
+        }
     }
 }
 
