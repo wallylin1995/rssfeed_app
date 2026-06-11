@@ -1,8 +1,15 @@
 import SwiftUI
 
 struct StoryDetailView: View {
+    @Environment(\.openWindow) private var openWindow
     let article: ArticleRecord
+    @StateObject private var intelligence: ArticleIntelligenceViewModel
     @State private var showingEmbeddedBrowser = false
+
+    init(article: ArticleRecord) {
+        self.article = article
+        _intelligence = StateObject(wrappedValue: ArticleIntelligenceViewModel(article: article))
+    }
 
     var body: some View {
         ScrollView {
@@ -58,13 +65,19 @@ struct StoryDetailView: View {
 
                     if article.articleLink != nil {
                         Button {
+                            #if os(macOS)
+                            openWindow(id: "article-reader", value: article.uuid)
+                            #else
                             showingEmbeddedBrowser = true
+                            #endif
                         } label: {
                             Label("Open Original Article", systemImage: "globe")
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(JippoPalette.highlight)
                     }
+
+                    intelligencePanel
 
                     Divider()
                         .overlay(.white.opacity(0.1))
@@ -86,9 +99,126 @@ struct StoryDetailView: View {
         .background(JippoPalette.canvas.ignoresSafeArea())
         .navigationTitle(article.sourceTitle)
         .jippoTitleDisplayMode(.inline)
+#if !os(macOS)
         .sheet(isPresented: $showingEmbeddedBrowser) {
             EmbeddedArticleBrowserView(article: article)
         }
+#endif
+    }
+
+    private var intelligencePanel: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .center, spacing: 10) {
+                Label("Apple Intelligence", systemImage: "apple.intelligence")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white)
+
+                Spacer()
+
+                if intelligence.isSummarizing || intelligence.isTranslating {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+
+            HStack(spacing: 10) {
+                Button {
+                    Task { await intelligence.summarize() }
+                } label: {
+                    Label("Summarize", systemImage: "text.alignleft")
+                }
+                .buttonStyle(.bordered)
+                .disabled(intelligence.isSummarizing || intelligence.isTranslating)
+
+                Button {
+                    Task { await intelligence.translateToTraditionalChinese() }
+                } label: {
+                    Label("繁中", systemImage: "character.book.closed")
+                }
+                .buttonStyle(.bordered)
+                .disabled(intelligence.isSummarizing || intelligence.isTranslating)
+
+                Button {
+                    Task { await intelligence.translateToEnglish() }
+                } label: {
+                    Label("English", systemImage: "globe")
+                }
+                .buttonStyle(.bordered)
+                .disabled(intelligence.isSummarizing || intelligence.isTranslating)
+
+                if intelligence.translation != nil {
+                    Button("Reset") {
+                        intelligence.clearTranslation()
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(intelligence.isSummarizing || intelligence.isTranslating)
+                }
+            }
+
+            if let errorMessage = intelligence.errorMessage {
+                Text(errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let summary = intelligence.summary, !summary.isEmpty {
+                intelligenceCard(title: "Summary", systemImage: "sparkles", body: summary)
+            }
+
+            if let translation = intelligence.translation {
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("Translation · \(translation.targetLanguageLabel)", systemImage: "text.bubble")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(JippoPalette.highlight)
+
+                    Text(translation.translatedTitle)
+                        .font(.title3.weight(.bold))
+
+                    if let translatedSummary = translation.translatedSummary, !translatedSummary.isEmpty {
+                        Text(translatedSummary)
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Text(translation.translatedBody)
+                        .font(.body)
+                        .textSelection(.enabled)
+                }
+                .padding(18)
+                .background(JippoPalette.panel.opacity(0.88))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(.white.opacity(0.06), lineWidth: 1)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            }
+        }
+        .padding(18)
+        .background(JippoPalette.panelSoft.opacity(0.72))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(.white.opacity(0.06), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private func intelligenceCard(title: String, systemImage: String, body: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(title, systemImage: systemImage)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(JippoPalette.highlight)
+
+            Text(body)
+                .font(.body)
+                .textSelection(.enabled)
+        }
+        .padding(18)
+        .background(JippoPalette.panel.opacity(0.88))
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(.white.opacity(0.06), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 }
 

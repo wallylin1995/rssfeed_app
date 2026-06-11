@@ -48,6 +48,10 @@ enum StoryAccent: Hashable {
         }
     }
 
+    var baseColor: Color {
+        colors.first ?? .white
+    }
+
     var symbol: String {
         switch self {
         case .sunset:

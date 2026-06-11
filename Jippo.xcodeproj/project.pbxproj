@@ -11,6 +11,7 @@
 		250FD2D08AB38039084049A7 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63E3C4C3E2E6317C3A389047 /* AppModel.swift */; };
 		2848075FF54FC40B5DBF8F3B /* AppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB34335A81134469D092E53F /* AppView.swift */; };
 		29F2636A5FDE2F34FEE77216 /* StoryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB562ED8E0E6CAB6B94B6C8E /* StoryDetailView.swift */; };
+		35F7A8A5DCCB4A1D8CDA9E8E /* ArticleIntelligence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 178814EDB9DD44AA96587726 /* ArticleIntelligence.swift */; };
 		3E1E00455FEDE8A46BACF246 /* EmbeddedArticleBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B75FA06338B71F7323CA7244 /* EmbeddedArticleBrowserView.swift */; };
 		5778FE870BD5BF2D8D707C25 /* BuiltInRSS.opml in Resources */ = {isa = PBXBuildFile; fileRef = 261DABCEECAE829845793A79 /* BuiltInRSS.opml */; };
 		75404B8FBFB5D691F65CF8DA /* RSSFeedParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 806F9496F4164913B16E88CB /* RSSFeedParser.swift */; };
@@ -31,6 +32,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		178814EDB9DD44AA96587726 /* ArticleIntelligence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArticleIntelligence.swift; sourceTree = "<group>"; };
 		1515C42D43C15AA5384C4B1E /* HomeComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeComponents.swift; sourceTree = "<group>"; };
 		261DABCEECAE829845793A79 /* BuiltInRSS.opml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = BuiltInRSS.opml; sourceTree = "<group>"; };
 		3F30215074BF8834E920D90A /* JippoModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JippoModels.swift; sourceTree = "<group>"; };
@@ -180,6 +182,7 @@
 		CD0E4AF7E5758166177978B7 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				178814EDB9DD44AA96587726 /* ArticleIntelligence.swift */,
 				806F9496F4164913B16E88CB /* RSSFeedParser.swift */,
 				A47D4DA7E47EA243DC73AC77 /* RSSSyncService.swift */,
 			);
@@ -279,6 +282,7 @@
 				1D56DEDA1ED8D8BB690924FD /* AppBootstrap.swift in Sources */,
 				250FD2D08AB38039084049A7 /* AppModel.swift in Sources */,
 				2848075FF54FC40B5DBF8F3B /* AppView.swift in Sources */,
+				35F7A8A5DCCB4A1D8CDA9E8E /* ArticleIntelligence.swift in Sources */,
 				3E1E00455FEDE8A46BACF246 /* EmbeddedArticleBrowserView.swift in Sources */,
 				E7AFAC3EAC8A5D844AE97919 /* FeedLoading.swift in Sources */,
 				F64A67179C7B1C50A80F3079 /* FeedSource.swift in Sources */,

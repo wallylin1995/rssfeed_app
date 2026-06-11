@@ -1,6 +1,9 @@
 import SwiftUI
 import WebKit
 import Combine
+#if os(macOS)
+import AppKit
+#endif
 #if os(iOS)
 import SafariServices
 #endif
@@ -10,8 +13,13 @@ struct EmbeddedArticleBrowserView: View {
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var store: ArticleWebViewStore
+    @StateObject private var intelligence: ArticleIntelligenceViewModel
     @State private var mode: ArticlePresentationMode = .reader
-    @State private var preferences = ReaderPreferences()
+    @AppStorage("reader.fontScale") private var fontScaleStorage = 1.0
+    @AppStorage("reader.width") private var widthStorage = ReaderWidth.comfortable.rawValue
+    @AppStorage("reader.theme") private var themeStorage = ReaderTheme.graphite.rawValue
+    @State private var readerScrollOffset: CGFloat = 0
+    @State private var insightPanelExpanded = false
     #if os(iOS)
     @State private var showingReaderSheet = false
     #endif
@@ -24,24 +32,41 @@ struct EmbeddedArticleBrowserView: View {
                 fallbackContent: ReaderArticleContent.from(article: article)
             )
         )
+        _intelligence = StateObject(wrappedValue: ArticleIntelligenceViewModel(article: article))
     }
 
     var body: some View {
         ZStack(alignment: .top) {
-            Group {
-                switch mode {
-                case .web:
+            let preferences = readerPreferences
+
+            ZStack {
+                if mode == .web {
                     PlatformWebView(webView: store.webView)
                         .background(preferences.theme.canvasColor)
-                case .reader:
-                    ReaderModeView(content: store.readerContent, preferences: preferences)
+                        .transition(
+                            .asymmetric(
+                                insertion: .opacity.combined(with: .scale(scale: 0.992)),
+                                removal: .opacity
+                            )
+                        )
+                }
+
+                if mode == .reader {
+                    ReaderModeView(content: store.readerContent, preferences: preferences, scrollOffset: $readerScrollOffset)
                         .background(preferences.theme.canvasColor)
+                        .transition(
+                            .asymmetric(
+                                insertion: .opacity.combined(with: .scale(scale: 0.992)),
+                                removal: .opacity
+                            )
+                        )
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .animation(.spring(response: 0.38, dampingFraction: 0.88), value: mode)
 
             VStack(spacing: 12) {
-                floatingToolbar
+                floatingToolbar(preferences: preferences)
 
                 if store.isLoading, mode == .web {
                     ProgressView(value: store.estimatedProgress)
@@ -56,7 +81,10 @@ struct EmbeddedArticleBrowserView: View {
             .padding(.horizontal, 18)
         }
         .frame(minWidth: 1040, idealWidth: 1240, minHeight: 760, idealHeight: 900)
-        .background(preferences.theme.canvasColor.ignoresSafeArea())
+        .background(readerPreferences.theme.canvasColor.ignoresSafeArea())
+        #if os(macOS)
+        .background(WindowAutosaveConfigurator(autosaveName: "JippoArticleReaderWindow"))
+        #endif
         #if os(iOS)
         .sheet(isPresented: $showingReaderSheet) {
             if let url = article.articleLink {
@@ -66,122 +94,138 @@ struct EmbeddedArticleBrowserView: View {
         #endif
     }
 
-    private var floatingToolbar: some View {
-        HStack(spacing: 12) {
+    private func floatingToolbar(preferences: ReaderPreferences) -> some View {
+        let compact = mode == .reader && readerScrollOffset > 52
+
+        return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .frame(width: 30, height: 30)
-                }
-                .buttonStyle(.plain)
-                .glassCapsuleButton()
-
-                Picker("View Mode", selection: $mode) {
-                    ForEach(ArticlePresentationMode.allCases) { mode in
-                        Text(mode.label).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 196)
-            }
-            .glassPanel(cornerRadius: 22)
-
-            if mode == .web {
-                HStack(spacing: 10) {
+                HStack(spacing: 12) {
                     Button {
-                        store.goBack()
+                        dismiss()
                     } label: {
-                        Image(systemName: "chevron.backward")
+                        Image(systemName: "xmark")
+                            .font(.system(size: 12, weight: .bold))
                             .frame(width: 30, height: 30)
                     }
                     .buttonStyle(.plain)
                     .glassCapsuleButton()
-                    .disabled(!store.canGoBack)
 
-                    Button {
-                        store.goForward()
-                    } label: {
-                        Image(systemName: "chevron.forward")
-                            .frame(width: 30, height: 30)
+                    Picker("View Mode", selection: $mode) {
+                        ForEach(ArticlePresentationMode.allCases) { mode in
+                            Text(mode.label).tag(mode)
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .glassCapsuleButton()
-                    .disabled(!store.canGoForward)
-
-                    Button {
-                        store.reload()
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .frame(width: 30, height: 30)
-                    }
-                    .buttonStyle(.plain)
-                    .glassCapsuleButton()
+                    .pickerStyle(.segmented)
+                    .frame(width: compact ? 150 : 196)
                 }
-                .glassPanel(cornerRadius: 22)
-            } else {
-                readerPreferencesToolbar
-            }
+                .glassPanel(cornerRadius: compact ? 18 : 22)
 
-            Spacer(minLength: 0)
+                if mode == .web {
+                    HStack(spacing: 10) {
+                        Button {
+                            store.goBack()
+                        } label: {
+                            Image(systemName: "chevron.backward")
+                                .frame(width: 30, height: 30)
+                        }
+                        .buttonStyle(.plain)
+                        .glassCapsuleButton()
+                        .disabled(!store.canGoBack)
 
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(store.readerContent.title)
-                    .font(.headline.weight(.semibold))
-                    .lineLimit(1)
-                    .foregroundStyle(preferences.theme.primaryTextColor)
+                        Button {
+                            store.goForward()
+                        } label: {
+                            Image(systemName: "chevron.forward")
+                                .frame(width: 30, height: 30)
+                        }
+                        .buttonStyle(.plain)
+                        .glassCapsuleButton()
+                        .disabled(!store.canGoForward)
 
-                HStack(spacing: 8) {
-                    Text(store.readerContent.source)
+                        Button {
+                            store.reload()
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                                .frame(width: 30, height: 30)
+                        }
+                        .buttonStyle(.plain)
+                        .glassCapsuleButton()
+                    }
+                    .glassPanel(cornerRadius: compact ? 18 : 22)
+                } else {
+                    readerPreferencesToolbar(compact: compact)
+                }
 
-                    if let author = store.readerContent.byline ?? article.byline ?? article.author {
-                        Text("•")
-                        Text(author)
+                intelligenceToolbar(compact: compact, preferences: preferences)
+
+                Spacer(minLength: 0)
+
+                if !compact {
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text(store.readerContent.title)
+                            .font(.headline.weight(.semibold))
                             .lineLimit(1)
-                    }
-                }
-                .font(.caption.weight(.medium))
-                .foregroundStyle(preferences.theme.secondaryTextColor)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .glassPanel(cornerRadius: 22)
+                            .foregroundStyle(preferences.theme.primaryTextColor)
 
-            #if os(iOS)
-            if article.articleLink != nil {
-                Button("Safari Reader") {
-                    showingReaderSheet = true
+                        HStack(spacing: 8) {
+                            Text(store.readerContent.source)
+
+                            if let author = store.readerContent.byline ?? article.byline ?? article.author {
+                                Text("•")
+                                Text(author)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(preferences.theme.secondaryTextColor)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .glassPanel(cornerRadius: 22)
+                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
                 }
-                .buttonStyle(.glassProminentOrFallback(tint: JippoPalette.highlight))
+
+                #if os(iOS)
+                if article.articleLink != nil {
+                    Button("Safari Reader") {
+                        showingReaderSheet = true
+                    }
+                    .buttonStyle(.glassProminentOrFallback(tint: JippoPalette.highlight))
+                }
+                #endif
             }
-            #endif
+            .animation(.spring(response: 0.28, dampingFraction: 0.88), value: compact)
+
+            if insightPanelExpanded || intelligence.isSummarizing || intelligence.isTranslating || intelligence.hasOutput || intelligence.errorMessage != nil {
+                intelligencePanel(preferences: preferences, compact: compact)
+                    .frame(maxWidth: compact ? 420 : 560, alignment: .leading)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
     }
 
-    private var readerPreferencesToolbar: some View {
+    private func readerPreferencesToolbar(compact: Bool) -> some View {
         HStack(spacing: 10) {
-            preferenceChip(label: "A-", action: { preferences.fontScale = max(0.88, preferences.fontScale - 0.08) })
-            preferenceChip(label: "A+", action: { preferences.fontScale = min(1.4, preferences.fontScale + 0.08) })
+            preferenceChip(label: "A-", action: { fontScaleStorage = max(0.88, fontScaleStorage - 0.08) })
+            preferenceChip(label: "A+", action: { fontScaleStorage = min(1.4, fontScaleStorage + 0.08) })
 
-            Picker("Width", selection: $preferences.width) {
+            Picker("Width", selection: readerWidthBinding) {
                 ForEach(ReaderWidth.allCases) { width in
                     Text(width.shortLabel).tag(width)
                 }
             }
             .pickerStyle(.segmented)
-            .frame(width: 160)
+            .frame(width: compact ? 120 : 160)
 
-            Picker("Theme", selection: $preferences.theme) {
+            Picker("Theme", selection: readerThemeBinding) {
                 ForEach(ReaderTheme.allCases) { theme in
                     Text(theme.shortLabel).tag(theme)
                 }
             }
             .pickerStyle(.segmented)
-            .frame(width: 170)
+            .frame(width: compact ? 132 : 170)
         }
-        .glassPanel(cornerRadius: 22)
+        .glassPanel(cornerRadius: compact ? 18 : 22)
     }
 
     private func preferenceChip(label: String, action: @escaping () -> Void) -> some View {
@@ -192,6 +236,153 @@ struct EmbeddedArticleBrowserView: View {
         }
         .buttonStyle(.plain)
         .glassCapsuleButton()
+    }
+
+    private func intelligenceToolbar(compact: Bool, preferences: ReaderPreferences) -> some View {
+        HStack(spacing: 8) {
+            intelligenceChip(
+                label: compact ? "AI" : "摘要",
+                systemImage: "sparkles",
+                accent: preferences.theme.accentColor
+            ) {
+                insightPanelExpanded = true
+                Task { await intelligence.summarize() }
+            }
+
+            intelligenceChip(
+                label: compact ? "繁" : "繁中",
+                systemImage: "character.book.closed",
+                accent: preferences.theme.accentColor.opacity(0.82)
+            ) {
+                insightPanelExpanded = true
+                Task { await intelligence.translateToTraditionalChinese() }
+            }
+
+            intelligenceChip(
+                label: compact ? "EN" : "English",
+                systemImage: "globe",
+                accent: preferences.theme.accentColor.opacity(0.62)
+            ) {
+                insightPanelExpanded = true
+                Task { await intelligence.translateToEnglish() }
+            }
+
+            if intelligence.hasOutput || intelligence.errorMessage != nil {
+                intelligenceChip(
+                    label: compact ? "×" : "Clear",
+                    systemImage: "xmark",
+                    accent: preferences.theme.secondaryTextColor.opacity(0.18)
+                ) {
+                    intelligence.clearOutputs()
+                    insightPanelExpanded = false
+                }
+            }
+
+            if intelligence.isSummarizing || intelligence.isTranslating {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(preferences.theme.accentColor)
+                    .padding(.horizontal, 4)
+            }
+        }
+        .glassPanel(cornerRadius: compact ? 18 : 22)
+    }
+
+    private func intelligenceChip(label: String, systemImage: String, accent: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(label, systemImage: systemImage)
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(accent.opacity(0.16), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .glassCapsuleButton()
+    }
+
+    private func intelligencePanel(preferences: ReaderPreferences, compact: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Label(activeInsightTitle, systemImage: activeInsightIcon)
+                    .font(.caption.weight(.black))
+                    .kerning(1.2)
+                    .foregroundStyle(preferences.theme.accentColor)
+
+                Spacer()
+
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                        insightPanelExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: insightPanelExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .bold))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .glassCapsuleButton()
+            }
+
+            if let errorMessage = intelligence.errorMessage {
+                Text(errorMessage)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(preferences.theme.secondaryTextColor)
+            } else if insightPanelExpanded || intelligence.hasOutput || intelligence.isSummarizing || intelligence.isTranslating {
+                Text(activeInsightText)
+                    .font(.system(size: compact ? 16 : 18, weight: .medium, design: .serif))
+                    .lineSpacing(compact ? 5 : 7)
+                    .foregroundStyle(preferences.theme.primaryTextColor)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .glassPanel(cornerRadius: compact ? 22 : 24)
+    }
+
+    private var activeInsightTitle: String {
+        if let translation = intelligence.translation {
+            return "TRANSLATION · \(translation.targetLanguageLabel.uppercased())"
+        }
+        return "APPLE INTELLIGENCE SUMMARY"
+    }
+
+    private var activeInsightIcon: String {
+        intelligence.translation == nil ? "sparkles" : "text.bubble"
+    }
+
+    private var activeInsightText: String {
+        if let translation = intelligence.translation {
+            let body = translation.translatedBody.trimmingCharacters(in: .whitespacesAndNewlines)
+            let summary = translation.translatedSummary?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let summary, !summary.isEmpty {
+                return "\(translation.translatedTitle)\n\n\(summary)"
+            }
+            return body.isEmpty ? translation.translatedTitle : "\(translation.translatedTitle)\n\n\(String(body.prefix(420)))"
+        }
+
+        return intelligence.summary?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Generate a concise takeaway from this article."
+    }
+
+    private var readerPreferences: ReaderPreferences {
+        ReaderPreferences(
+            fontScale: CGFloat(fontScaleStorage),
+            width: ReaderWidth(rawValue: widthStorage) ?? .comfortable,
+            theme: ReaderTheme(rawValue: themeStorage) ?? .graphite
+        )
+    }
+
+    private var readerWidthBinding: Binding<ReaderWidth> {
+        Binding(
+            get: { ReaderWidth(rawValue: widthStorage) ?? .comfortable },
+            set: { widthStorage = $0.rawValue }
+        )
+    }
+
+    private var readerThemeBinding: Binding<ReaderTheme> {
+        Binding(
+            get: { ReaderTheme(rawValue: themeStorage) ?? .graphite },
+            set: { themeStorage = $0.rawValue }
+        )
     }
 }
 
@@ -306,10 +497,18 @@ private enum ReaderTheme: String, CaseIterable, Identifiable {
 private struct ReaderModeView: View {
     let content: ReaderArticleContent
     let preferences: ReaderPreferences
+    @Binding var scrollOffset: CGFloat
+    @State private var galleryPresentation: ReaderGalleryPresentation?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
+                GeometryReader { proxy in
+                    Color.clear
+                        .preference(key: ReaderScrollOffsetKey.self, value: -proxy.frame(in: .named("readerScroll")).minY)
+                }
+                .frame(height: 0)
+
                 if let heroImageURL = content.heroImageURL {
                     AsyncImage(url: heroImageURL) { phase in
                         switch phase {
@@ -397,7 +596,13 @@ private struct ReaderModeView: View {
 
                 VStack(alignment: .leading, spacing: 18) {
                     ForEach(Array(content.blocks.enumerated()), id: \.offset) { _, block in
-                        ReaderBlockView(block: block, preferences: preferences)
+                        ReaderBlockView(
+                            block: block,
+                            preferences: preferences,
+                            openGallery: { items, index in
+                                galleryPresentation = ReaderGalleryPresentation(items: items, selectedIndex: index)
+                            }
+                        )
                     }
                 }
 
@@ -418,8 +623,17 @@ private struct ReaderModeView: View {
                     .padding(.vertical, 28)
             )
         }
+        .coordinateSpace(name: "readerScroll")
+        .onPreferenceChange(ReaderScrollOffsetKey.self) { scrollOffset = $0 }
         .scrollContentBackground(.hidden)
         .background(preferences.theme.canvasColor)
+        .sheet(item: $galleryPresentation) { presentation in
+            ReaderGalleryLightbox(
+                items: presentation.items,
+                initialIndex: presentation.selectedIndex,
+                theme: preferences.theme
+            )
+        }
     }
 }
 
@@ -460,7 +674,7 @@ struct ReaderArticleContent {
             .components(separatedBy: "\n\n")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-            .map { ReaderBlock(kind: .paragraph, text: $0, imageURL: nil, caption: nil, language: nil) }
+            .map { ReaderBlock(kind: .paragraph, text: $0, imageURL: nil, mediaItems: [], caption: nil, language: nil) }
     }
 
     static func decodeBlocks(from json: String?) -> [ReaderBlock]? {
@@ -471,21 +685,32 @@ struct ReaderArticleContent {
             guard let kind = ReaderBlock.Kind(rawValue: item.kind) else { return nil }
             let text = cleaned(item.text) ?? ""
             let caption = cleaned(item.caption)
-            let imageURL = imageURL(from: item.imageURL)
+            let resolvedImageURL = imageURL(from: item.imageURL)
             let language = cleaned(item.language)
+            let mediaItems = item.mediaItems?.compactMap { payload -> ReaderMediaItem? in
+                let url = imageURL(from: payload.imageURL)
+                let caption = cleaned(payload.caption)
+                guard url != nil || caption != nil else { return nil }
+                return ReaderMediaItem(imageURL: url, caption: caption)
+            } ?? []
 
             if kind != .image && kind != .caption && kind != .codeBlock && text.isEmpty {
                 return nil
             }
 
-            if kind == .image && imageURL == nil {
+            if kind == .image && resolvedImageURL == nil {
+                return nil
+            }
+
+            if kind == .imageGallery && mediaItems.isEmpty {
                 return nil
             }
 
             return ReaderBlock(
                 kind: kind,
                 text: text,
-                imageURL: imageURL,
+                imageURL: resolvedImageURL,
+                mediaItems: mediaItems,
                 caption: caption,
                 language: language
             )
@@ -515,6 +740,7 @@ struct ReaderBlock {
     var kind: Kind
     var text: String
     var imageURL: URL?
+    var mediaItems: [ReaderMediaItem]
     var caption: String?
     var language: String?
 
@@ -525,6 +751,7 @@ struct ReaderBlock {
         case pullQuote
         case listItem
         case image
+        case imageGallery
         case caption
         case codeBlock
     }
@@ -534,13 +761,39 @@ private struct ReaderBlockPayload: Decodable {
     let kind: String
     let text: String
     let imageURL: String?
+    let mediaItems: [ReaderMediaItemPayload]?
     let caption: String?
     let language: String?
+}
+
+struct ReaderMediaItem: Decodable, Hashable {
+    let imageURL: URL?
+    let caption: String?
+}
+
+private struct ReaderMediaItemPayload: Decodable {
+    let imageURL: String?
+    let caption: String?
+}
+
+private struct ReaderScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+private struct ReaderGalleryPresentation: Identifiable {
+    let id = UUID()
+    let items: [ReaderMediaItem]
+    let selectedIndex: Int
 }
 
 private struct ReaderBlockView: View {
     let block: ReaderBlock
     let preferences: ReaderPreferences
+    let openGallery: ([ReaderMediaItem], Int) -> Void
 
     var body: some View {
         switch block.kind {
@@ -626,6 +879,9 @@ private struct ReaderBlockView: View {
                             EmptyView()
                         }
                     }
+                    .onTapGesture {
+                        openGallery([ReaderMediaItem(imageURL: imageURL, caption: block.caption)], 0)
+                    }
                     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 }
 
@@ -634,6 +890,54 @@ private struct ReaderBlockView: View {
                         .font(.caption)
                         .foregroundStyle(preferences.theme.secondaryTextColor)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        case .imageGallery:
+            VStack(alignment: .leading, spacing: 12) {
+                LazyVGrid(columns: galleryColumns, spacing: 12) {
+                    ForEach(Array(block.mediaItems.enumerated()), id: \.offset) { index, item in
+                        VStack(alignment: .leading, spacing: 8) {
+                            if let url = item.imageURL {
+                                AsyncImage(url: url) { phase in
+                                    switch phase {
+                                    case .empty:
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                                .fill(preferences.theme.codeBackground)
+                                            ProgressView()
+                                        }
+                                    case .success(let image):
+                                        image
+                                            .resizable()
+                                            .scaledToFill()
+                                    case .failure:
+                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                            .fill(preferences.theme.codeBackground)
+                                    @unknown default:
+                                        EmptyView()
+                                    }
+                                }
+                                .frame(height: 220)
+                                .onTapGesture {
+                                    openGallery(block.mediaItems, index)
+                                }
+                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                            }
+
+                            if let caption = item.caption, !caption.isEmpty {
+                                Text(caption)
+                                    .font(.caption)
+                                    .foregroundStyle(preferences.theme.secondaryTextColor)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                }
+
+                if let caption = block.caption, !caption.isEmpty {
+                    Text(caption)
+                        .font(.caption)
+                        .foregroundStyle(preferences.theme.secondaryTextColor)
                 }
             }
         case .caption:
@@ -652,7 +956,406 @@ private struct ReaderBlockView: View {
             .background(preferences.theme.codeBackground, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
     }
+
+    private var galleryColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: 12),
+            GridItem(.flexible(), spacing: 12)
+        ]
+    }
 }
+
+private struct ReaderGalleryLightbox: View {
+    @Environment(\.dismiss) private var dismiss
+    let items: [ReaderMediaItem]
+    let initialIndex: Int
+    let theme: ReaderTheme
+    @State private var selectedIndex: Int
+    @State private var dismissDragOffset: CGSize = .zero
+    @State private var chromeVisible = true
+
+    init(items: [ReaderMediaItem], initialIndex: Int, theme: ReaderTheme) {
+        self.items = items
+        self.initialIndex = initialIndex
+        self.theme = theme
+        _selectedIndex = State(initialValue: initialIndex)
+    }
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            theme.canvasColor
+                .opacity(backgroundOpacity)
+                .ignoresSafeArea()
+
+            TabView(selection: $selectedIndex) {
+                ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                    VStack(spacing: 18) {
+                        Spacer(minLength: 0)
+
+                        if let url = item.imageURL {
+                            ZoomableGalleryImage(
+                                url: url,
+                                theme: theme,
+                                onDismissDragChanged: { translation in
+                                    dismissDragOffset = translation
+                                    setChromeVisible(abs(translation.height) < 12)
+                                },
+                                onDismissDragEnded: { translation in
+                                    finishDismissDrag(translation: translation)
+                                },
+                                onInteractionChanged: { interacting in
+                                    setChromeVisible(!interacting)
+                                }
+                            )
+                            .padding(.horizontal, 28)
+                        }
+
+                        if let caption = item.caption, !caption.isEmpty {
+                            Text(caption)
+                                .font(.body)
+                                .foregroundStyle(theme.secondaryTextColor)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 60)
+                                .padding(.bottom, 32)
+                        } else {
+                            Spacer(minLength: 32)
+                        }
+                    }
+                    .tag(index)
+                }
+            }
+            .modifier(GalleryTabViewStyle())
+            .animation(.spring(response: 0.3, dampingFraction: 0.9), value: selectedIndex)
+            .offset(y: dismissDragOffset.height * 0.18)
+            .scaleEffect(1 - min(abs(dismissDragOffset.height) / 1800, 0.045))
+
+            HStack {
+                galleryArrowButton(systemName: "chevron.left", enabled: selectedIndex > 0) {
+                    selectedIndex = max(0, selectedIndex - 1)
+                }
+
+                Spacer()
+
+                galleryArrowButton(systemName: "chevron.right", enabled: selectedIndex < items.count - 1) {
+                    selectedIndex = min(items.count - 1, selectedIndex + 1)
+                }
+            }
+            .padding(.horizontal, 24)
+            .opacity(chromeVisible ? 1 : 0)
+            .allowsHitTesting(chromeVisible)
+
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+                .glassCapsuleButton()
+
+                Spacer()
+
+                Text("\(selectedIndex + 1) / \(items.count)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(theme.primaryTextColor)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+                    .glassPanel(cornerRadius: 18)
+            }
+            .padding(18)
+            .opacity(chromeVisible ? 1 : 0)
+            .allowsHitTesting(chromeVisible)
+        }
+        .animation(.spring(response: 0.24, dampingFraction: 0.88), value: chromeVisible)
+        #if os(macOS)
+        .background(
+            LightboxKeyboardHandler(
+                onLeft: { if selectedIndex > 0 { selectedIndex -= 1 } },
+                onRight: { if selectedIndex < items.count - 1 { selectedIndex += 1 } },
+                onEscape: { dismiss() },
+                onSpace: { chromeVisible.toggle() }
+            )
+        )
+        #endif
+    }
+
+    private func galleryArrowButton(systemName: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 14, weight: .bold))
+                .frame(width: 42, height: 42)
+        }
+        .buttonStyle(.plain)
+        .glassCapsuleButton()
+        .opacity(enabled ? 1 : 0.32)
+        .disabled(!enabled)
+    }
+
+    private var backgroundOpacity: Double {
+        let fade = min(abs(dismissDragOffset.height) / 260, 0.4)
+        return max(0.58, 1 - fade)
+    }
+
+    private func finishDismissDrag(translation: CGSize) {
+        if abs(translation.height) > 140 {
+            dismiss()
+        } else {
+            withAnimation(.spring(response: 0.26, dampingFraction: 0.86)) {
+                dismissDragOffset = .zero
+            }
+            setChromeVisible(true)
+        }
+    }
+
+    private func setChromeVisible(_ visible: Bool) {
+        guard chromeVisible != visible else { return }
+        withAnimation(.spring(response: 0.22, dampingFraction: 0.9)) {
+            chromeVisible = visible
+        }
+    }
+}
+
+private struct GalleryTabViewStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content.tabViewStyle(.page(indexDisplayMode: .automatic))
+        #else
+        content.tabViewStyle(.automatic)
+        #endif
+    }
+}
+
+private struct ZoomableGalleryImage: View {
+    let url: URL
+    let theme: ReaderTheme
+    let onDismissDragChanged: (CGSize) -> Void
+    let onDismissDragEnded: (CGSize) -> Void
+    let onInteractionChanged: (Bool) -> Void
+
+    @State private var baseScale: CGFloat = 1
+    @State private var pinchScale: CGFloat = 1
+    @State private var baseOffset: CGSize = .zero
+    @State private var dragOffset: CGSize = .zero
+
+    private var effectiveScale: CGFloat {
+        min(max(baseScale * pinchScale, 1), 4)
+    }
+
+    private var effectiveOffset: CGSize {
+        CGSize(width: baseOffset.width + dragOffset.width, height: baseOffset.height + dragOffset.height)
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .empty:
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFit()
+                        .scaleEffect(effectiveScale)
+                        .offset(effectiveOffset)
+                        .contentShape(Rectangle())
+                        .gesture(doubleTapGesture(containerSize: proxy.size))
+                        .simultaneousGesture(magnificationGesture)
+                        .simultaneousGesture(dragGesture)
+                        .animation(.spring(response: 0.24, dampingFraction: 0.88), value: effectiveScale)
+                case .failure:
+                    Image(systemName: "photo")
+                        .font(.system(size: 48))
+                        .foregroundStyle(theme.secondaryTextColor)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                @unknown default:
+                    EmptyView()
+                }
+            }
+        }
+    }
+
+    private var magnificationGesture: some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                pinchScale = value.magnification
+                onInteractionChanged(true)
+            }
+            .onEnded { value in
+                baseScale = min(max(baseScale * value.magnification, 1), 4)
+                pinchScale = 1
+                if baseScale <= 1.02 {
+                    withAnimation(.spring(response: 0.24, dampingFraction: 0.86)) {
+                        resetPan()
+                    }
+                    onInteractionChanged(false)
+                } else {
+                    onInteractionChanged(true)
+                }
+            }
+    }
+
+    private var dragGesture: some Gesture {
+        DragGesture(minimumDistance: 3)
+            .onChanged { value in
+                if effectiveScale > 1.02 {
+                    dragOffset = value.translation
+                    onDismissDragChanged(.zero)
+                    onInteractionChanged(true)
+                } else {
+                    dragOffset = .zero
+                    onDismissDragChanged(value.translation)
+                    onInteractionChanged(true)
+                }
+            }
+            .onEnded { value in
+                if effectiveScale > 1.02 {
+                    baseOffset = CGSize(
+                        width: baseOffset.width + value.translation.width,
+                        height: baseOffset.height + value.translation.height
+                    )
+                    dragOffset = .zero
+                    onInteractionChanged(true)
+                } else {
+                    dragOffset = .zero
+                    onDismissDragEnded(value.translation)
+                    onInteractionChanged(false)
+                }
+            }
+    }
+
+    private func doubleTapGesture(containerSize: CGSize) -> some Gesture {
+        SpatialTapGesture(count: 2)
+            .onEnded { value in
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.84)) {
+                    if effectiveScale > 1.2 {
+                        baseScale = 1
+                        pinchScale = 1
+                        resetPan()
+                        onInteractionChanged(false)
+                    } else {
+                        baseScale = 2.2
+                        pinchScale = 1
+                        baseOffset = zoomOffset(for: value.location, in: containerSize, scale: baseScale)
+                        dragOffset = .zero
+                        onInteractionChanged(true)
+                    }
+                }
+            }
+    }
+
+    private func resetPan() {
+        baseOffset = .zero
+        dragOffset = .zero
+    }
+
+    private func zoomOffset(for location: CGPoint, in size: CGSize, scale: CGFloat) -> CGSize {
+        guard size.width > 0, size.height > 0 else { return .zero }
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        let x = (center.x - location.x) * min(scale - 1, 1.4) * 0.72
+        let y = (center.y - location.y) * min(scale - 1, 1.4) * 0.72
+        return CGSize(width: x, height: y)
+    }
+}
+
+#if os(macOS)
+private struct LightboxKeyboardHandler: NSViewRepresentable {
+    let onLeft: () -> Void
+    let onRight: () -> Void
+    let onEscape: () -> Void
+    let onSpace: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onLeft: onLeft, onRight: onRight, onEscape: onEscape, onSpace: onSpace)
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        context.coordinator.attach(to: view)
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.attach(to: nsView)
+    }
+
+    final class Coordinator {
+        private let onLeft: () -> Void
+        private let onRight: () -> Void
+        private let onEscape: () -> Void
+        private let onSpace: () -> Void
+        private weak var hostingView: NSView?
+        private var monitor: Any?
+
+        init(onLeft: @escaping () -> Void, onRight: @escaping () -> Void, onEscape: @escaping () -> Void, onSpace: @escaping () -> Void) {
+            self.onLeft = onLeft
+            self.onRight = onRight
+            self.onEscape = onEscape
+            self.onSpace = onSpace
+        }
+
+        deinit {
+            if let monitor {
+                NSEvent.removeMonitor(monitor)
+            }
+        }
+
+        func attach(to view: NSView) {
+            hostingView = view
+            DispatchQueue.main.async {
+                view.window?.makeFirstResponder(view)
+            }
+
+            guard monitor == nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self, self.hostingView?.window?.isKeyWindow == true else { return event }
+
+                switch event.keyCode {
+                case 123:
+                    self.onLeft()
+                    return nil
+                case 124:
+                    self.onRight()
+                    return nil
+                case 53:
+                    self.onEscape()
+                    return nil
+                case 49:
+                    self.onSpace()
+                    return nil
+                default:
+                    return event
+                }
+            }
+        }
+    }
+}
+
+private struct WindowAutosaveConfigurator: NSViewRepresentable {
+    let autosaveName: String
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        configureWindow(from: view)
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        configureWindow(from: nsView)
+    }
+
+    private func configureWindow(from view: NSView) {
+        DispatchQueue.main.async {
+            guard let window = view.window else { return }
+            window.setFrameAutosaveName(autosaveName)
+            window.isRestorable = true
+            window.collectionBehavior.insert(.fullScreenPrimary)
+        }
+    }
+}
+#endif
 
 private struct GlassPanelModifier: ViewModifier {
     let cornerRadius: CGFloat
@@ -854,7 +1557,7 @@ final class ArticleWebViewStore: NSObject, ObservableObject {
               ? raw.replace(/^\\n+|\\n+$/g, "")
               : raw.replace(/\\s+/g, " ").trim();
 
-            if (cleaned || extra.imageURL) {
+            if (cleaned || extra.imageURL || (extra.mediaItems && extra.mediaItems.length)) {
               blocks.push({ kind, text: cleaned, ...extra });
             }
           };
@@ -865,10 +1568,22 @@ final class ArticleWebViewStore: NSObject, ObservableObject {
             if (!node || node.nodeType !== Node.ELEMENT_NODE) return;
             const tag = node.tagName.toLowerCase();
 
+            const directImages = Array.from(node.querySelectorAll(":scope > img"));
+            if ((tag === "figure" || node.className?.toLowerCase().includes("gallery")) && directImages.length > 1) {
+              pushBlock("imageGallery", "", {
+                mediaItems: directImages.map(image => ({
+                  imageURL: image.getAttribute("src") || "",
+                  caption: image.getAttribute("alt") || ""
+                })),
+                caption: node.querySelector("figcaption")?.textContent || ""
+              });
+              return;
+            }
+
             if (tag === "figure") {
-              const image = node.querySelector("img");
-              if (image) {
-                pushBlock("image", "", {
+                const image = node.querySelector("img");
+                if (image) {
+                  pushBlock("image", "", {
                   imageURL: image.getAttribute("src") || "",
                   caption: node.querySelector("figcaption")?.textContent || ""
                 });
@@ -1031,7 +1746,7 @@ final class ArticleWebViewStore: NSObject, ObservableObject {
           const blocks = [];
           const pushBlock = (kind, text, extra = {}) => {
             const cleaned = (text || "").replace(/\\s+/g, " ").trim();
-            if (cleaned || extra.imageURL) {
+            if (cleaned || extra.imageURL || (extra.mediaItems && extra.mediaItems.length)) {
               blocks.push({ kind, text: cleaned, ...extra });
             }
           };
@@ -1039,6 +1754,18 @@ final class ArticleWebViewStore: NSObject, ObservableObject {
           const walk = node => {
             if (!node || node.nodeType !== Node.ELEMENT_NODE) return;
             const tag = node.tagName.toLowerCase();
+
+            const directImages = Array.from(node.querySelectorAll(":scope > img"));
+            if ((tag === "figure" || node.className?.toLowerCase().includes("gallery")) && directImages.length > 1) {
+              pushBlock("imageGallery", "", {
+                mediaItems: directImages.map(image => ({
+                  imageURL: image.getAttribute("src") || "",
+                  caption: image.getAttribute("alt") || ""
+                })),
+                caption: node.querySelector("figcaption")?.textContent || ""
+              });
+              return;
+            }
 
             if (tag === "figure") {
               const image = node.querySelector("img");

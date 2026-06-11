@@ -17,7 +17,7 @@ struct ReaderShellView: View {
             ReaderContentColumn(selection: appModel.selectedSidebar, selectedArticleID: selectedArticleID)
                 .modifier(ContentColumnWidthModifier(selection: appModel.selectedSidebar))
         } detail: {
-            ReaderDetailColumn(selection: appModel.selectedSidebar, selectedArticleID: appModel.selectedArticleID)
+            ReaderDetailColumn(selection: appModel.selectedSidebar, selectedArticleID: selectedArticleID)
         }
         .navigationSplitViewStyle(.balanced)
         .toolbar {
@@ -207,11 +207,31 @@ private struct ReaderContentColumn: View {
 private struct ReaderDetailColumn: View {
     @Environment(\.modelContext) private var modelContext
     let selection: ReaderSidebarSelection
-    let selectedArticleID: UUID?
+    @Binding var selectedArticleID: UUID?
 
     var body: some View {
         if let article = selectedArticle {
-            StoryDetailView(article: article)
+            ZStack(alignment: .topTrailing) {
+                StoryDetailView(article: article)
+
+                if selection == .today {
+                    Button {
+                        selectedArticleID = nil
+                    } label: {
+                        Label("Back to Today", systemImage: "xmark")
+                            .labelStyle(.iconOnly)
+                            .font(.system(size: 12, weight: .bold))
+                            .frame(width: 32, height: 32)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(JippoPalette.highlight)
+                    .padding(20)
+                }
+            }
+        } else if selection == .today {
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(JippoPalette.canvas)
         } else {
             ContentUnavailableView(
                 "Select a Story",
