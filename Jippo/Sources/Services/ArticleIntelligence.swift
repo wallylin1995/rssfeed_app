@@ -24,6 +24,14 @@ struct ArticleSnapshot: Sendable {
         body = article.content?.text ?? article.content?.summary ?? ""
     }
 
+    init(content: ReaderArticleContent) {
+        title = content.title
+        sourceTitle = content.source
+        byline = content.byline
+        summary = content.excerpt
+        body = content.bodyText
+    }
+
     var summarizationInput: String {
         [
             "Title: \(title)",
@@ -78,15 +86,28 @@ final class ArticleIntelligenceViewModel: ObservableObject {
     @Published var isTranslating = false
     @Published var errorMessage: String?
 
-    private let snapshot: ArticleSnapshot
+    private var snapshot: ArticleSnapshot
 
     var hasOutput: Bool {
         let hasSummary = !(summary?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
         return hasSummary || translation != nil
     }
 
+    var isBusy: Bool {
+        isSummarizing || isTranslating
+    }
+
     init(article: ArticleRecord) {
         snapshot = ArticleSnapshot(article: article)
+    }
+
+    func updateSnapshot(_ snapshot: ArticleSnapshot, resetOutputs: Bool = true) {
+        self.snapshot = snapshot
+        errorMessage = nil
+
+        guard resetOutputs else { return }
+        summary = nil
+        translation = nil
     }
 
     func clearTranslation() {

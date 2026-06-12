@@ -20,19 +20,3 @@ struct AppView: View {
             }
     }
 }
-
-struct AppView_Previews: PreviewProvider {
-    static var previews: some View {
-        AppView()
-            .environmentObject(AppModel())
-            .modelContainer(for: [
-                FeedRecord.self,
-                ArticleRecord.self,
-                ArticleContentRecord.self,
-                HomepagePlanRecord.self,
-                HomepageSectionRecord.self,
-                HomepagePlacementRecord.self
-            ], inMemory: true)
-            .preferredColorScheme(.dark)
-    }
-}

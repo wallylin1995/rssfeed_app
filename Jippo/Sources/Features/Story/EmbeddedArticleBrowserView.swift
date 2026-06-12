@@ -449,7 +449,7 @@ private enum ReaderTheme: String, CaseIterable, Identifiable {
 
     var canvasColor: Color {
         switch self {
-        case .graphite: JippoPalette.canvas
+        case .graphite: Color(red: 0.09, green: 0.10, blue: 0.12)
         case .paper: Color(red: 0.93, green: 0.92, blue: 0.89)
         case .sepia: Color(red: 0.94, green: 0.89, blue: 0.80)
         }
@@ -457,7 +457,7 @@ private enum ReaderTheme: String, CaseIterable, Identifiable {
 
     var articleSurfaceColor: Color {
         switch self {
-        case .graphite: Color.white.opacity(0.03)
+        case .graphite: Color(red: 0.15, green: 0.16, blue: 0.19)
         case .paper: Color.white.opacity(0.82)
         case .sepia: Color(red: 0.97, green: 0.92, blue: 0.84)
         }
@@ -487,7 +487,7 @@ private enum ReaderTheme: String, CaseIterable, Identifiable {
 
     var codeBackground: Color {
         switch self {
-        case .graphite: Color.white.opacity(0.06)
+        case .graphite: Color.white.opacity(0.08)
         case .paper: Color.black.opacity(0.05)
         case .sepia: Color.black.opacity(0.06)
         }
@@ -654,9 +654,9 @@ struct ReaderArticleContent {
     }
 
     static func from(article: ArticleRecord) -> ReaderArticleContent {
-        let summary = cleaned(article.content?.summary)
-        let htmlText = cleaned(HTMLContentExtractor.plainText(from: article.content?.html ?? ""))
-        let body = cleaned(article.content?.text) ?? htmlText ?? summary ?? ""
+        let summary = normalizedPlainText(from: article.content?.summary)
+        let htmlText = normalizedPlainText(fromHTML: article.content?.html)
+        let body = normalizedPlainText(from: article.content?.text) ?? htmlText ?? summary ?? ""
 
         return ReaderArticleContent(
             title: article.title,
@@ -722,6 +722,21 @@ struct ReaderArticleContent {
     static func imageURL(from string: String?) -> URL? {
         guard let cleaned = cleaned(string), let url = URL(string: cleaned) else { return nil }
         return url
+    }
+
+    static func normalizedPlainText(from text: String?) -> String? {
+        guard let text = cleaned(text) else { return nil }
+
+        if text.contains("<"), text.contains(">") {
+            return normalizedPlainText(fromHTML: text)
+        }
+
+        return text
+    }
+
+    static func normalizedPlainText(fromHTML html: String?) -> String? {
+        guard let html = cleaned(html) else { return nil }
+        return cleaned(HTMLContentExtractor.plainText(from: html))
     }
 
     static func cleaned(_ text: String?) -> String? {
@@ -1374,6 +1389,7 @@ private struct GlassPanelModifier: ViewModifier {
                 .overlay(
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .stroke(.white.opacity(0.08), lineWidth: 1)
+                        .allowsHitTesting(false)
                 )
         }
     }
@@ -1387,7 +1403,11 @@ private struct GlassCapsuleButtonModifier: ViewModifier {
         } else {
             content
                 .background(.ultraThinMaterial, in: Capsule())
-                .overlay(Capsule().stroke(.white.opacity(0.08), lineWidth: 1))
+                .overlay(
+                    Capsule()
+                        .stroke(.white.opacity(0.08), lineWidth: 1)
+                        .allowsHitTesting(false)
+                )
         }
     }
 }
@@ -1458,9 +1478,10 @@ final class ArticleWebViewStore: NSObject, ObservableObject {
     @Published var canGoBack = false
     @Published var canGoForward = false
     @Published var isLoading = true
+    @Published var pageTitle: String?
+    @Published var currentURL: URL?
     @Published var readerContent: ReaderArticleContent
 
-    private let articleURL: URL?
     private var cancellables: Set<AnyCancellable> = []
 
     init(articleURL: URL?, fallbackContent: ReaderArticleContent) {
@@ -1468,12 +1489,12 @@ final class ArticleWebViewStore: NSObject, ObservableObject {
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
 
         webView = WKWebView(frame: .zero, configuration: configuration)
-        self.articleURL = articleURL
         self.readerContent = fallbackContent
         super.init()
 
         webView.navigationDelegate = self
         webView.allowsBackForwardNavigationGestures = true
+        currentURL = articleURL
 
         observeWebView()
 
@@ -1484,14 +1505,37 @@ final class ArticleWebViewStore: NSObject, ObservableObject {
         }
     }
 
+    func presentArticle(url: URL?, fallbackContent: ReaderArticleContent) {
+        readerContent = fallbackContent
+        estimatedProgress = 0
+        isLoading = url != nil
+        pageTitle = nil
+        canGoBack = false
+        canGoForward = false
+        currentURL = url
+        webView.stopLoading()
+
+        guard let url else {
+            isLoading = false
+            return
+        }
+
+        load(url: url)
+    }
+
     func load(url: URL) {
         var request = URLRequest(url: url)
         request.timeoutInterval = 30
+        currentURL = url
         webView.load(request)
     }
 
     func reload() {
         webView.reload()
+    }
+
+    func stopLoading() {
+        webView.stopLoading()
     }
 
     func goBack() {
@@ -1521,6 +1565,16 @@ final class ArticleWebViewStore: NSObject, ObservableObject {
         webView.publisher(for: \.isLoading)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in self?.isLoading = $0 }
+            .store(in: &cancellables)
+
+        webView.publisher(for: \.title)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in self?.pageTitle = $0 }
+            .store(in: &cancellables)
+
+        webView.publisher(for: \.url)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in self?.currentURL = $0 }
             .store(in: &cancellables)
     }
 

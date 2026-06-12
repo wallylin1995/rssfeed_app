@@ -4,6 +4,7 @@ import SwiftData
 @main
 struct JippoApp: App {
     @StateObject private var appModel = AppModel()
+    @AppStorage("app.appearance") private var appearanceStorage = AppAppearanceMode.system.rawValue
     private let sharedModelContainer: ModelContainer
 
     init() {
@@ -27,14 +28,14 @@ struct JippoApp: App {
         WindowGroup {
             AppView()
                 .environmentObject(appModel)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(preferredColorScheme)
         }
         .modelContainer(sharedModelContainer)
 
         WindowGroup("Article Reader", id: "article-reader", for: UUID.self) { $articleID in
             ArticleReaderWindowScene(articleID: articleID)
                 .environmentObject(appModel)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(preferredColorScheme)
         }
 #if os(macOS)
         .defaultWindowPlacement { _, context in
@@ -45,6 +46,10 @@ struct JippoApp: App {
         }
 #endif
         .modelContainer(sharedModelContainer)
+    }
+
+    private var preferredColorScheme: ColorScheme? {
+        AppAppearanceMode(rawValue: appearanceStorage)?.colorScheme
     }
 }
 
