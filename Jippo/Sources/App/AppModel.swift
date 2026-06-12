@@ -150,6 +150,7 @@ enum DetailReaderWidth: String, CaseIterable, Identifiable {
 }
 
 enum DetailReaderTheme: String, CaseIterable, Identifiable {
+    case automatic
     case graphite
     case paper
     case sepia
@@ -158,6 +159,7 @@ enum DetailReaderTheme: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
+        case .automatic: "Automatic"
         case .graphite: "Graphite"
         case .paper: "Paper"
         case .sepia: "Sepia"

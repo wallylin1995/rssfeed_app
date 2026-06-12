@@ -3,6 +3,7 @@ import WebKit
 
 struct StoryDetailView: View {
     @EnvironmentObject private var appModel: AppModel
+    @Environment(\.colorScheme) private var colorScheme
     let article: ArticleRecord
     let canGoPrevious: Bool
     let canGoNext: Bool
@@ -18,7 +19,7 @@ struct StoryDetailView: View {
     @State private var dismissedReaderSuggestion = false
     @AppStorage("reader.fontScale") private var fontScaleStorage = 1.0
     @AppStorage("reader.width") private var widthStorage = DetailReaderWidth.comfortable.rawValue
-    @AppStorage("reader.theme") private var themeStorage = DetailReaderTheme.graphite.rawValue
+    @AppStorage("reader.theme") private var themeStorage = DetailReaderTheme.automatic.rawValue
 
     init(
         article: ArticleRecord,
@@ -858,7 +859,11 @@ struct StoryDetailView: View {
     }
 
     private var readerTheme: DetailReaderTheme {
-        DetailReaderTheme(rawValue: themeStorage) ?? .graphite
+        let storedTheme = DetailReaderTheme(rawValue: themeStorage) ?? .automatic
+        if storedTheme == .graphite && colorScheme == .light {
+            return .paper
+        }
+        return storedTheme.resolved(for: colorScheme)
     }
 
     private var browserTitleText: String {
@@ -1022,8 +1027,19 @@ struct StoryDetailView: View {
 }
 
 private extension DetailReaderTheme {
+    func resolved(for colorScheme: ColorScheme) -> DetailReaderTheme {
+        switch self {
+        case .automatic:
+            colorScheme == .dark ? .graphite : .paper
+        case .graphite, .paper, .sepia:
+            self
+        }
+    }
+
     var canvasColor: Color {
         switch self {
+        case .automatic:
+            Color.clear
         case .graphite: Color(red: 0.09, green: 0.10, blue: 0.12)
         case .paper: Color(red: 0.93, green: 0.92, blue: 0.89)
         case .sepia: Color(red: 0.94, green: 0.89, blue: 0.80)
@@ -1032,6 +1048,8 @@ private extension DetailReaderTheme {
 
     var articleSurfaceColor: Color {
         switch self {
+        case .automatic:
+            Color.clear
         case .graphite: Color(red: 0.15, green: 0.16, blue: 0.19)
         case .paper: Color.white.opacity(0.82)
         case .sepia: Color(red: 0.97, green: 0.92, blue: 0.84)
@@ -1040,6 +1058,8 @@ private extension DetailReaderTheme {
 
     var toolbarSurfaceColor: Color {
         switch self {
+        case .automatic:
+            Color.clear
         case .graphite: Color(red: 0.13, green: 0.14, blue: 0.17).opacity(0.96)
         case .paper: Color.white.opacity(0.88)
         case .sepia: Color(red: 0.95, green: 0.90, blue: 0.82)
@@ -1048,6 +1068,8 @@ private extension DetailReaderTheme {
 
     var controlSurfaceColor: Color {
         switch self {
+        case .automatic:
+            Color.clear
         case .graphite: Color.white.opacity(0.08)
         case .paper, .sepia: .black.opacity(0.05)
         }
@@ -1055,6 +1077,8 @@ private extension DetailReaderTheme {
 
     var primaryTextColor: Color {
         switch self {
+        case .automatic:
+            .primary
         case .graphite: .white
         case .paper, .sepia: Color.black.opacity(0.84)
         }
@@ -1062,6 +1086,8 @@ private extension DetailReaderTheme {
 
     var secondaryTextColor: Color {
         switch self {
+        case .automatic:
+            .secondary
         case .graphite: .white.opacity(0.7)
         case .paper, .sepia: Color.black.opacity(0.55)
         }
@@ -1069,6 +1095,8 @@ private extension DetailReaderTheme {
 
     var accentColor: Color {
         switch self {
+        case .automatic:
+            JippoPalette.highlight
         case .graphite: JippoPalette.highlight
         case .paper: Color(red: 0.70, green: 0.26, blue: 0.34)
         case .sepia: Color(red: 0.66, green: 0.36, blue: 0.20)
@@ -1077,6 +1105,8 @@ private extension DetailReaderTheme {
 
     var borderColor: Color {
         switch self {
+        case .automatic:
+            .clear
         case .graphite: .white.opacity(0.11)
         case .paper, .sepia: .black.opacity(0.08)
         }

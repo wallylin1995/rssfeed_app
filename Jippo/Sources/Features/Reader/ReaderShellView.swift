@@ -8,7 +8,7 @@ struct ReaderShellView: View {
     @AppStorage("app.appearance") private var appearanceStorage = AppAppearanceMode.system.rawValue
     @AppStorage("reader.fontScale") private var fontScaleStorage = 1.0
     @AppStorage("reader.width") private var widthStorage = DetailReaderWidth.comfortable.rawValue
-    @AppStorage("reader.theme") private var themeStorage = DetailReaderTheme.graphite.rawValue
+    @AppStorage("reader.theme") private var themeStorage = DetailReaderTheme.automatic.rawValue
 
     init() {}
 
