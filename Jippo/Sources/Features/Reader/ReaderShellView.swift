@@ -7,6 +7,7 @@ struct ReaderShellView: View {
     @Query(sort: [SortDescriptor(\FeedRecord.displayOrder)]) private var feeds: [FeedRecord]
     @AppStorage("app.appearance") private var appearanceStorage = AppAppearanceMode.system.rawValue
     @AppStorage("reader.fontScale") private var fontScaleStorage = 1.0
+    @AppStorage("reader.lineSpacing") private var lineSpacingStorage = 1.0
     @AppStorage("reader.width") private var widthStorage = DetailReaderWidth.comfortable.rawValue
     @AppStorage("reader.theme") private var themeStorage = DetailReaderTheme.automatic.rawValue
 
@@ -225,6 +226,15 @@ struct ReaderShellView: View {
                 }
                 Button("Larger") {
                     fontScaleStorage = min(1.4, fontScaleStorage + 0.08)
+                }
+            }
+
+            Section("Line Spacing") {
+                Button("Tighter") {
+                    lineSpacingStorage = max(0.82, lineSpacingStorage - 0.08)
+                }
+                Button("Looser") {
+                    lineSpacingStorage = min(1.5, lineSpacingStorage + 0.08)
                 }
             }
 

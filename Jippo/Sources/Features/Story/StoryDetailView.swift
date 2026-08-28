@@ -18,6 +18,7 @@ struct StoryDetailView: View {
     @State private var showingReaderSuggestion = false
     @State private var dismissedReaderSuggestion = false
     @AppStorage("reader.fontScale") private var fontScaleStorage = 1.0
+    @AppStorage("reader.lineSpacing") private var lineSpacingStorage = 1.0
     @AppStorage("reader.width") private var widthStorage = DetailReaderWidth.comfortable.rawValue
     @AppStorage("reader.theme") private var themeStorage = DetailReaderTheme.automatic.rawValue
 
@@ -129,7 +130,11 @@ struct StoryDetailView: View {
             }
             originalContent
         }
+#if os(macOS)
+        .padding(0)
+#else
         .padding(20)
+#endif
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
@@ -212,7 +217,7 @@ struct StoryDetailView: View {
                     if content.blocks.isEmpty {
                         Text(content.bodyText)
                             .font(.system(size: 18 * fontScale, weight: .regular, design: .serif))
-                            .lineSpacing(7 * fontScale)
+                            .lineSpacing(readerLineSpacing)
                             .foregroundStyle(readerTheme.primaryTextColor)
                             .textSelection(.enabled)
                     } else {
@@ -224,20 +229,16 @@ struct StoryDetailView: View {
                     }
                 }
                 .padding(24)
-                .background(readerTheme.articleSurfaceColor)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(readerTheme.borderColor, lineWidth: 1)
-                        .allowsHitTesting(false)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             }
         }
     }
 
     private var originalContent: some View {
+#if os(macOS)
+        InlinePlatformWebView(webView: webStore.webView)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+#else
         VStack(alignment: .leading, spacing: 14) {
-#if !os(macOS)
             HStack(spacing: 10) {
                 headerIconButton(title: "Back", systemImage: "chevron.backward", action: webStore.goBack)
                     .disabled(!webStore.canGoBack)
@@ -253,7 +254,6 @@ struct StoryDetailView: View {
 
                 browserAddressBar
             }
-#endif
 
             if browserShowsLoadingStrip {
                 browserLoadingStrip
@@ -277,6 +277,7 @@ struct StoryDetailView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+#endif
     }
 
     private var readerToolbar: some View {
@@ -351,6 +352,15 @@ struct StoryDetailView: View {
                         }
                         Button("Larger") {
                             fontScaleStorage = min(1.4, fontScaleStorage + 0.08)
+                        }
+                    }
+
+                    Section("Line Spacing") {
+                        Button("Tighter") {
+                            lineSpacingStorage = max(0.82, lineSpacingStorage - 0.08)
+                        }
+                        Button("Looser") {
+                            lineSpacingStorage = min(1.5, lineSpacingStorage + 0.08)
                         }
                     }
 
@@ -511,7 +521,7 @@ struct StoryDetailView: View {
             case .paragraph:
                 Text(block.text)
                     .font(.system(size: 18 * fontScale, weight: .regular, design: .serif))
-                    .lineSpacing(7 * fontScale)
+                    .lineSpacing(readerLineSpacing)
                     .foregroundStyle(readerTheme.primaryTextColor)
                     .textSelection(.enabled)
             case .pullQuote:
@@ -542,7 +552,7 @@ struct StoryDetailView: View {
 
                     Text(block.text)
                         .font(.system(size: 18 * fontScale, weight: .regular, design: .serif))
-                        .lineSpacing(7 * fontScale)
+                        .lineSpacing(readerLineSpacing)
                         .foregroundStyle(readerTheme.primaryTextColor)
                 }
             case .image:
@@ -844,6 +854,10 @@ struct StoryDetailView: View {
 
     private var fontScale: CGFloat {
         CGFloat(fontScaleStorage)
+    }
+
+    private var readerLineSpacing: CGFloat {
+        7 * CGFloat(lineSpacingStorage) * fontScale
     }
 
     private var activeReadableContent: ReaderArticleContent {
